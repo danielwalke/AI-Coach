@@ -1,12 +1,14 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { DataProvider, useData } from './context/DataContext';
+import { WorkoutProvider } from './context/WorkoutContext';
 import Layout from './components/layout/Layout';
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
 import Dashboard from './pages/dashboard/Dashboard';
 import ActiveSession from './pages/training/ActiveSession';
 import Profile from './pages/Profile';
+import HealthCoach from './pages/health-coach/HealthCoach';
 
 // Protected Route Wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -41,6 +43,14 @@ const AppRoutes: React.FC = () => {
           }
         />
         <Route
+          path="health-coach"
+          element={
+            <ProtectedRoute>
+              <HealthCoach />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="training"
           element={
             <ProtectedRoute>
@@ -65,7 +75,9 @@ function App() {
   return (
     <BrowserRouter>
       <DataProvider>
-        <AppRoutes />
+        <WorkoutProvider>
+          <AppRoutes />
+        </WorkoutProvider>
       </DataProvider>
     </BrowserRouter>
   );

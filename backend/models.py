@@ -15,6 +15,33 @@ class User(UserBase, table=True):
     
     exercises: List["Exercise"] = Relationship(back_populates="user")
     sessions: List["TrainingSession"] = Relationship(back_populates="user")
+    garmin_credentials: Optional["GarminCredentials"] = Relationship(back_populates="user")
+    heart_rate_logs: List["HeartRateLog"] = Relationship(back_populates="user")
+
+class GarminCredentials(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    email: str
+    password: str
+
+    user: User = Relationship(back_populates="garmin_credentials")
+
+class HeartRateLog(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    timestamp: datetime
+    heart_rate: int
+    
+    user: User = Relationship(back_populates="heart_rate_logs")
+
+    # garmin_credentials relationship removed to avoid ambiguity
+    
+# Update GarminCredentials to have the relationship back to user
+# We need to do this carefully if we want type checking to work well, 
+# but for SQLModel circular deps can be tricky in one go. 
+# Let's just add the back_populates to GarminCredentials.
+
+
 
 class ExerciseBase(SQLModel):
     name: str
@@ -55,6 +82,7 @@ class TrainingSetBase(SQLModel):
     weight: float
     reps: int
     completed: bool = False
+    rest_seconds: int = 0
 
 class TrainingSet(TrainingSetBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

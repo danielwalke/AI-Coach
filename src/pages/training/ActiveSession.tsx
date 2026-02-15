@@ -1,127 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { v4 as uuidv4 } from 'uuid';
-import { Play, Plus, Trash2, Save, Clock, X, Check, PlusCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Play, Plus, Trash2, Save, Clock, X, PlusCircle, StopCircle, Timer } from 'lucide-react';
 import { useData } from '../../context/DataContext';
-// Local interfaces for state management (using UUID for keys)
-interface LocalTrainingSet {
-    id: string;
-    weight: number;
-    reps: number;
-    completed: boolean;
-}
-
-interface LocalSessionExercise {
-    exerciseId: number;
-    sets: LocalTrainingSet[];
-}
+import { useWorkout } from '../../context/WorkoutContext';
 import ExerciseSelector from './ExerciseSelector';
 
 const ActiveSession: React.FC = () => {
-    const { user, exercises: allExercises, addSession } = useData();
-    const navigate = useNavigate();
+    const { exercises: allExercises } = useData();
+    const {
+        isActive,
+        elapsedTime,
+        sessionExercises,
+        isResting,
+        restTimer,
+        startSession,
+        finishSession,
+        cancelSession,
+        addExercise,
+        removeExercise,
+        addSet,
+        updateSet,
+        removeSet
+    } = useWorkout();
 
-    // Session State
-    const [isActive, setIsActive] = useState(false);
-    const [elapsedTime, setElapsedTime] = useState(0);
-    const [sessionExercises, setSessionExercises] = useState<LocalSessionExercise[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
-
-    // Timer Effect
-    useEffect(() => {
-        let interval: number;
-        if (isActive) {
-            interval = window.setInterval(() => {
-                setElapsedTime(prev => prev + 1);
-            }, 1000);
-        }
-        return () => clearInterval(interval);
-    }, [isActive]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
-
-    const startSession = () => {
-        setIsActive(true);
-        setElapsedTime(0);
-        setSessionExercises([]);
-    };
-
-    const handleAddExercise = (exerciseId: number) => {
-        const newSessionExercise: LocalSessionExercise = {
-            exerciseId,
-            sets: [
-                { id: uuidv4(), weight: 0, reps: 0, completed: false }
-            ]
-        };
-        // Functional update to ensure no race conditions
-        setSessionExercises(prev => [...prev, newSessionExercise]);
-    };
-
-    const updateSet = (exerciseIndex: number, setIndex: number, field: keyof LocalTrainingSet, value: string | number | boolean) => {
-        setSessionExercises(prev => prev.map((ex, i) => {
-            if (i !== exerciseIndex) return ex;
-
-            const updatedSets = ex.sets.map((s, j) => {
-                if (j !== setIndex) return s;
-                return { ...s, [field]: value };
-            });
-
-            return { ...ex, sets: updatedSets };
-        }));
-    };
-
-    const addSet = (exerciseIndex: number) => {
-        setSessionExercises(prev => prev.map((ex, i) => {
-            if (i !== exerciseIndex) return ex;
-
-            const previousSet = ex.sets[ex.sets.length - 1];
-            const newSet: LocalTrainingSet = {
-                id: uuidv4(),
-                weight: previousSet ? previousSet.weight : 0,
-                reps: previousSet ? previousSet.reps : 0,
-                completed: false
-            };
-
-            return { ...ex, sets: [...ex.sets, newSet] };
-        }));
-    };
-
-    const removeSet = (exerciseIndex: number, setIndex: number) => {
-        setSessionExercises(prev => prev.map((ex, i) => {
-            if (i !== exerciseIndex) return ex;
-            return { ...ex, sets: ex.sets.filter((_, j) => j !== setIndex) };
-        }));
-    };
-
-    const removeExercise = (index: number) => {
-        setSessionExercises(prev => prev.filter((_, i) => i !== index));
-    };
-
-    const finishSession = async () => {
-        if (!user) return;
-
-        // Transform local state to API format
-        const apiExercises = sessionExercises.map(ex => ({
-            exercise_id: ex.exerciseId,
-            sets: ex.sets.map(s => ({
-                weight: s.weight,
-                reps: s.reps,
-                completed: true // Auto-mark as completed since we removed the toggle
-            }))
-        }));
-
-        await addSession({
-            date: new Date().toISOString(),
-            duration_seconds: elapsedTime,
-            exercises: apiExercises
-        });
-
-        setIsActive(false);
-        navigate('/dashboard');
     };
 
     const getExerciseName = (id: number) => {
@@ -144,17 +50,35 @@ const ActiveSession: React.FC = () => {
 
     return (
         <div className="pb-20">
+            {/* Header / Timer Bar */}
             <div className="flex items-center justify-between mb-6 sticky top-0 bg-bg z-10 py-2 border-b border-border" style={{ backgroundColor: 'var(--color-bg)', borderColor: 'var(--color-border)' }}>
-                <h1 className="text-xl font-bold flex items-center gap-2 text-text">
-                    <Clock className="text-primary" size={24} />
-                    {formatTime(elapsedTime)}
-                </h1>
-                <button
-                    onClick={finishSession}
-                    className="btn btn-primary flex items-center gap-2"
-                >
-                    <Save size={18} /> Finish
-                </button>
+                <div className="flex flex-col">
+                    <h1 className="text-xl font-bold flex items-center gap-2 text-text">
+                        <Clock className="text-primary" size={24} />
+                        {formatTime(elapsedTime)}
+                    </h1>
+                    {isResting && (
+                        <span className="text-sm font-bold text-orange-500 animate-pulse flex items-center gap-1">
+                            <Timer size={14} /> Rest: {formatTime(restTimer)}
+                        </span>
+                    )}
+                </div>
+
+                <div className="flex gap-2">
+                    <button
+                        onClick={cancelSession}
+                        className="btn bg-red-600 hover:bg-red-700 text-white p-2"
+                        title="Cancel Workout"
+                    >
+                        <StopCircle size={20} />
+                    </button>
+                    <button
+                        onClick={finishSession}
+                        className="btn btn-primary flex items-center gap-2"
+                    >
+                        <Save size={18} /> Finish
+                    </button>
+                </div>
             </div>
 
             <div className="flex flex-col gap-4">
@@ -180,10 +104,15 @@ const ActiveSession: React.FC = () => {
 
                             {sessionExercise.sets.map((set, setIndex) => (
                                 <div key={set.id} data-testid="set-row" className={`grid grid-cols-12 gap-2 items-center ${set.completed ? 'opacity-50' : ''}`}>
-                                    <div className="col-span-1 flex justify-center">
+                                    <div className="col-span-1 flex flex-col items-center justify-center gap-1">
                                         <div className="bg-gray-800 rounded-full w-6 h-6 flex items-center justify-center text-xs text-white">
                                             {setIndex + 1}
                                         </div>
+                                        {set.restSeconds !== undefined && set.restSeconds > 0 && (
+                                            <div className="text-[10px] text-orange-500 font-mono">
+                                                {Math.floor(set.restSeconds / 60)}:{String(set.restSeconds % 60).padStart(2, '0')}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="col-span-4">
                                         <input
@@ -239,7 +168,7 @@ const ActiveSession: React.FC = () => {
             <ExerciseSelector
                 isOpen={isSelectorOpen}
                 onClose={() => setIsSelectorOpen(false)}
-                onSelect={handleAddExercise}
+                onSelect={(id) => { addExercise(id); setIsSelectorOpen(false); }}
             />
         </div>
     );

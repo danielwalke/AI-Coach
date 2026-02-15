@@ -8,7 +8,7 @@ import GlassCard from '../../components/ui/GlassCard';
 import StatCard from '../../components/ui/StatCard';
 
 const Dashboard: React.FC = () => {
-    const { user, sessions, exercises } = useData();
+    const { user, sessions } = useData();
     const [selectedSession, setSelectedSession] = useState<TrainingSession | null>(null);
 
     // Stats Calculations - moved before conditional return to satisfy Rules of Hooks.
@@ -88,6 +88,8 @@ const Dashboard: React.FC = () => {
                 />
             </div>
 
+
+
             <section>
                 <div className="px-2 mb-3">
                     <h2 className="text-xl font-bold text-text tracking-tight">Progress</h2>
@@ -158,7 +160,14 @@ const Dashboard: React.FC = () => {
                                                     <span className="w-6 h-6 rounded-full bg-surface-highlight flex items-center justify-center text-xs font-bold text-muted">{j + 1}</span>
                                                     <span className={`font-medium ${set.completed ? 'text-text' : 'text-muted'}`}>{set.weight} kg <span className="text-muted mx-1">x</span> {set.reps}</span>
                                                 </div>
-                                                {set.completed && <div className="text-primary text-[10px] font-bold bg-primary/10 px-2 py-1 rounded-full">DONE</div>}
+                                                <div className="flex items-center gap-2">
+                                                    {set.rest_seconds !== undefined && set.rest_seconds > 0 && (
+                                                        <span className="text-[10px] text-orange-500 font-mono bg-orange-500/10 px-2 py-0.5 rounded">
+                                                            Rest: {Math.floor(set.rest_seconds / 60)}:{String(set.rest_seconds % 60).padStart(2, '0')}
+                                                        </span>
+                                                    )}
+                                                    {set.completed && <div className="text-primary text-[10px] font-bold bg-primary/10 px-2 py-1 rounded-full">DONE</div>}
+                                                </div>
                                             </div>
                                         ))}
                                     </div>

@@ -26,6 +26,7 @@ export interface TrainingSet {
     weight: number;
     reps: number;
     completed: boolean;
+    rest_seconds?: number;
 }
 
 export interface SessionExercise {

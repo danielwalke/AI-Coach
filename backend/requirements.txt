@@ -6,3 +6,6 @@ passlib[argon2]
 python-multipart
 pytest
 httpx
+garminconnect
+langchain-ollama
+langchain-core

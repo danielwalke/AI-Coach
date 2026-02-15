@@ -1,73 +1,105 @@
-# React + TypeScript + Vite
+# AI Coach 🏋️‍♂️
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-stack fitness tracking & AI coaching app. Track workouts, monitor progress, and get personalized training recommendations powered by a local LLM.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Core
+- **User Authentication** — Sign up / login with email & password
+- **Dashboard** — Workout history, streak tracking, progress charts
+- **Training Sessions** — Track exercises, sets, reps, weight, and rest time
+- **Persistent Workouts** — Navigate freely without losing session progress
+- **Rest Timer** — Automatic rest tracking between sets
+- **AI Coach** — Chat with a local LLM (qwen3:8b via Ollama) for personalized workout advice
+  - Select past workouts as context
+  - Streaming responses with thinking process toggle
+  - Chat history with message deletion
 
-## React Compiler
+### Feature Branch: `feature/garmin-integration`
+- **Garmin Connect Sync** — Link your Garmin account and sync heart rate data
+- **Heart Rate Chart** — Visualize heart rate with day navigation
+- **Auto-Sync** — Automatic 10-second sync interval
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React + TypeScript + Vite |
+| Styling | TailwindCSS |
+| Backend | Python FastAPI + SQLModel |
+| Database | SQLite |
+| AI | Ollama (qwen3:8b, 16k context) |
+| Deployment | Docker + nginx + ngrok |
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Quick Start (Development)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+```bash
+# Backend
+python -m venv venv
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Linux/Mac
+pip install -r backend/requirements.txt
+uvicorn backend.main:app --reload
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Frontend (new terminal)
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open http://localhost:5173
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Docker Deployment
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Prerequisites: Docker, Ollama with qwen3:8b
+docker compose up --build
 ```
+
+- **Frontend**: http://localhost:9060
+- **Backend API**: http://localhost:9061
+
+### Raspberry Pi (ARM)
+```bash
+chmod +x deploy-rpi.sh
+./deploy-rpi.sh
+```
+Builds containers natively for ARM, starts ngrok tunnel.
+
+### Windows
+```powershell
+.\deploy-windows.ps1
+```
+Builds containers, starts ngrok tunnel.
+
+## Project Structure
+
+```
+├── backend/               # FastAPI backend
+│   ├── main.py           # App entry point
+│   ├── models.py         # Database models
+│   ├── database.py       # DB connection
+│   ├── auth.py           # JWT authentication
+│   └── routers/          # API endpoints
+│       ├── auth.py       # Login/register
+│       ├── exercises.py  # Exercise CRUD
+│       ├── sessions.py   # Workout sessions
+│       └── coach.py      # AI Coach (LLM streaming)
+├── src/                   # React frontend
+│   ├── components/       # UI components
+│   ├── context/          # State management
+│   ├── pages/            # Page components
+│   └── api/              # API client
+├── Dockerfile.backend    # Backend Docker image
+├── Dockerfile.frontend   # Frontend Docker image
+├── docker-compose.yml    # Service orchestration
+├── deploy-rpi.sh         # ARM deployment script
+└── deploy-windows.ps1    # Windows deployment script
+```
+
+## Ports
+
+| Service | Port |
+|---------|------|
+| Frontend (nginx) | 9060 |
+| Backend (uvicorn) | 9061 |
+| Ollama | 11434 (default, on host) |

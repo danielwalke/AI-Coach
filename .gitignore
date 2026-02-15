@@ -29,3 +29,26 @@ dist-ssr
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Database
+*.db
+
+# Temp/debug files
+error.log
+lint_output*.txt
+test_failure.log
+test_output.txt
+token.txt
+dashboard_after_login.png
+screenshots/
+fitness.db
+
+# OS
+Thumbs.db
+.env
