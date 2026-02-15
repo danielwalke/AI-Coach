@@ -45,7 +45,7 @@ const Profile: React.FC = () => {
                     </div>
                     <div>
                         <h2 className="text-xl font-bold text-text">{user.name}</h2>
-                        <p className="text-muted text-sm">Joined {new Date(user.joinedAt).toLocaleDateString()}</p>
+                        <p className="text-muted text-sm">Joined {new Date(user.joined_at).toLocaleDateString()}</p>
                         <p className="text-muted text-xs">{user.email}</p>
                         {user.age && <p className="text-muted text-xs">Age: {user.age}</p>}
                     </div>
