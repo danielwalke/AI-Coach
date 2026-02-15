@@ -162,8 +162,10 @@ async def chat(
 
     # Initialize Ollama with extended context
     ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+    ollama_model = os.environ.get("OLLAMA_MODEL", "qwen3:8b")
+    
     llm = ChatOllama(
-        model="qwen3:8b",
+        model=ollama_model,
         num_ctx=16000,
         temperature=0.7,
         base_url=ollama_host,

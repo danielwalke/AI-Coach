@@ -44,14 +44,17 @@ else
         ollama serve &
         sleep 3
     fi
-    # Pull model if not present
-    if ! ollama list | grep -q "qwen3:8b"; then
-        echo "  Pulling qwen3:8b model (this may take a while on ARM)..."
-        ollama pull qwen3:8b
+    # Pull model if not present (qwen3:1.7b for RPi)
+    if ! ollama list | grep -q "qwen3:1.7b"; then
+        echo "  Pulling qwen3:1.7b model (optimized for ARM)..."
+        ollama pull qwen3:1.7b
     else
-        echo "  qwen3:8b model already available."
+        echo "  qwen3:1.7b model already available."
     fi
 fi
+
+# Set model env var for docker-compose
+export OLLAMA_MODEL=qwen3:1.7b
 
 # --- Stop existing containers ---
 echo ""

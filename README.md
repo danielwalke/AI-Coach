@@ -63,7 +63,7 @@ docker compose up --build
 chmod +x deploy-rpi.sh
 ./deploy-rpi.sh
 ```
-Builds containers natively for ARM, starts ngrok tunnel.
+Builds containers natively for ARM, uses `qwen3:1.7b` model, starts ngrok tunnel.
 
 ### Windows
 ```powershell

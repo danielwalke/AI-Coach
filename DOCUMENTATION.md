@@ -74,9 +74,10 @@ To use: `git checkout feature/garmin-integration`
 ### Ports
 | Service | Port |
 |---------|------|
-| Frontend (nginx) | 9060 |
-| Backend (uvicorn) | 9061 |
-| Ollama | 11434 (host) |
+- **Backend (uvicorn)**: 9061
+- **Ollama**: 11434 (host)
+  - Windows: qwen3:8b
+  - RPi: qwen3:1.7b
 
 ### Quick Deploy
 ```bash
