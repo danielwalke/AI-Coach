@@ -1,0 +1,28 @@
+﻿
+> fitness-app@0.0.0 lint
+> eslint .
+
+
+C:\Users\danie\git\antigravity\fitness-app\src\context\DataContext.tsx
+  182:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\danie\git\antigravity\fitness-app\src\pages\dashboard\Dashboard.tsx
+  21:20  error  React Hook "React.useMemo" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          react-hooks/rules-of-hooks
+  28:36  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\danie\git\antigravity\fitness-app\src\pages\dashboard\Dashboard.tsx:28:36
+  26 |         if (sortedDates.length === 0) return 0;
+  27 |         const today = new Date().toDateString();
+> 28 |         const yesterday = new Date(Date.now() - 86400000).toDateString();
+     |                                    ^^^^^^^^^^ Cannot call impure function
+  29 |         if (sortedDates[0] !== today && sortedDates[0] !== yesterday) return 0;
+  30 |         let streakCount = 1;
+  31 |         let currentDate = new Date(sortedDates[0]);  react-hooks/purity
+
+C:\Users\danie\git\antigravity\fitness-app\src\pages\dashboard\ProgressChart.tsx
+  59:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Ô£û 4 problems (4 errors, 0 warnings)
+

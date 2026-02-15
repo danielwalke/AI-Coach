@@ -1,0 +1,56 @@
+﻿
+> fitness-app@0.0.0 lint
+> eslint .
+
+
+C:\Users\danie\git\antigravity\fitness-app\src\context\DataContext.tsx
+    1:54  error  'useEffect' is defined but never used                                                                                           @typescript-eslint/no-unused-vars
+  182:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\danie\git\antigravity\fitness-app\src\db\db.ts
+  65:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\danie\git\antigravity\fitness-app\src\pages\dashboard\Dashboard.tsx
+  28:36  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\danie\git\antigravity\fitness-app\src\pages\dashboard\Dashboard.tsx:28:36
+  26 |         if (sortedDates.length === 0) return 0;
+  27 |         const today = new Date().toDateString();
+> 28 |         const yesterday = new Date(Date.now() - 86400000).toDateString();
+     |                                    ^^^^^^^^^^ Cannot call impure function
+  29 |         if (sortedDates[0] !== today && sortedDates[0] !== yesterday) return 0;
+  30 |         let streak = 1;
+  31 |         let currentDate = new Date(sortedDates[0]);  react-hooks/purity
+
+C:\Users\danie\git\antigravity\fitness-app\src\pages\dashboard\ProgressChart.tsx
+  12:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\danie\git\antigravity\fitness-app\src\pages\dashboard\ProgressChart.tsx:12:13
+  10 |     useEffect(() => {
+  11 |         if (exercises.length > 0 && selectedExerciseId === '') {
+> 12 |             setSelectedExerciseId(exercises[0].id);
+     |             ^^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  13 |         }
+  14 |     }, [exercises, selectedExerciseId]);
+  15 |  react-hooks/set-state-in-effect
+  61:50  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-explicit-any
+
+C:\Users\danie\git\antigravity\fitness-app\src\pages\training\ActiveSession.tsx
+  53:98  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\danie\git\antigravity\fitness-app\tests\dashboard_screenshot.spec.ts
+  1:16  error  'expect' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\danie\git\antigravity\fitness-app\tests\visual_verification.spec.ts
+  1:16  error  'expect' is defined but never used  @typescript-eslint/no-unused-vars
+
+Ô£û 9 problems (9 errors, 0 warnings)
+
