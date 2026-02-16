@@ -7,7 +7,7 @@ import type { TrainingSession } from '../../types/api';
 import GlassCard from '../../components/ui/GlassCard';
 
 const Dashboard: React.FC = () => {
-    const { user, sessions, streak, level, currentXP, nextLevelXP } = useData();
+    const { user, sessions, streak, level, currentXP, nextLevelXP, totalXP, calculateSessionXP } = useData();
     const [selectedSession, setSelectedSession] = useState<TrainingSession | null>(null);
 
     // Stats Grid
@@ -31,28 +31,35 @@ const Dashboard: React.FC = () => {
             </header>
 
             {/* Gamification Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-2">
+            <div className="grid grid-cols-2 gap-4 mb-2">
                 <div className="card text-center p-4 relative overflow-hidden bg-surface border border-border flex flex-col items-center justify-center shadow-sm">
                     <div className="text-3xl mb-1 animate-bounce">🔥</div>
                     <div className="font-black text-2xl text-text">{streak}</div>
-                    <div className="text-[10px] text-muted uppercase font-bold tracking-wider">Streak</div>
-                </div>
-                <div className="card text-center p-4 bg-surface border border-border flex flex-col items-center justify-center shadow-sm relative overflow-hidden">
-                    <div className="text-3xl mb-1">⚡</div>
-                    <div className="font-black text-2xl text-text">{currentXP} <span className="text-sm text-muted font-normal">/ {nextLevelXP}</span></div>
-                    <div className="text-[10px] text-muted uppercase font-bold tracking-wider">Level Progress</div>
-                    <div className="absolute bottom-0 left-0 w-full h-1.5 bg-gray-800">
-                        <div className="h-full bg-yellow-400 transition-all duration-1000 ease-out" style={{ width: `${xpPercent}%` }}></div>
-                    </div>
+                    <div className="text-[10px] text-muted uppercase font-bold tracking-wider">Day Streak</div>
                 </div>
                 <div className="card text-center p-4 bg-surface border border-border flex flex-col items-center justify-center shadow-sm">
                     <div className="text-3xl mb-1">🏆</div>
                     <div className="font-black text-2xl text-text">{level}</div>
-                    <div className="text-[10px] text-muted uppercase font-bold tracking-wider">Current Level</div>
+                    <div className="text-[10px] text-muted uppercase font-bold tracking-wider">Level</div>
                 </div>
             </div>
 
-
+            <div className="card p-4 bg-surface border border-border shadow-sm mb-6 relative overflow-hidden">
+                <div className="flex justify-between items-end mb-2 relative z-10">
+                    <div>
+                        <div className="text-[10px] text-muted uppercase font-bold tracking-wider mb-1">Total XP</div>
+                        <div className="font-black text-3xl text-text">{totalXP.toLocaleString()}</div>
+                    </div>
+                    <div className="text-right">
+                        <div className="text-xs text-primary font-bold">{currentXP} / {nextLevelXP} XP</div>
+                        <div className="text-[10px] text-muted font-medium">to next level</div>
+                    </div>
+                </div>
+                <div className="w-full h-2 bg-surface-highlight rounded-full overflow-hidden relative z-10">
+                    <div className="h-full bg-gradient-to-r from-primary to-yellow-500 transition-all duration-1000 ease-out" style={{ width: `${xpPercent}%` }}></div>
+                </div>
+                <div className="absolute top-0 right-0 opacity-5 text-[100px] leading-none pointer-events-none">⚡</div>
+            </div>
 
             <section>
                 <div className="px-2 mb-3">
@@ -85,7 +92,7 @@ const Dashboard: React.FC = () => {
                                 <div className="flex flex-col gap-1">
                                     <div className="flex items-center gap-2">
                                         <div className="font-bold text-text text-lg">{new Date(session.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-                                        <span className="text-[10px] font-bold bg-yellow-500/10 text-yellow-600 px-1.5 py-0.5 rounded border border-yellow-500/20">+100 XP</span>
+                                        <span className="text-[10px] font-bold bg-yellow-500/10 text-yellow-600 px-1.5 py-0.5 rounded border border-yellow-500/20">+{calculateSessionXP(session)} XP</span>
                                     </div>
                                     <div className="text-xs text-muted font-medium uppercase tracking-wide">{session.exercises.length} Exercises • {Math.floor(session.duration_seconds / 60)} min</div>
                                 </div>

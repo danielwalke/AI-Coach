@@ -40,7 +40,7 @@ const ProgressChart: React.FC = () => {
     if (exercises.length === 0) return <div className="p-4 text-center text-muted">No exercises found.</div>;
 
     return (
-        <div className="card w-full h-72 flex flex-col bg-surface border-none shadow-none p-0">
+        <div className="card w-full flex flex-col bg-surface border-none shadow-none p-0">
             <div className="flex justify-between items-center mb-4 px-2">
                 <select
                     className="p-2 text-sm bg-surface-highlight rounded-lg text-text font-medium border-none focus:ring-0 w-auto"

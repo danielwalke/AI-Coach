@@ -7,9 +7,13 @@ interface DataContextType {
     exercises: Exercise[];
     sessions: TrainingSession[];
     templates: WorkoutTemplate[];
+
+    // Auth & Data
     login: (email: string, password?: string) => Promise<void>;
     register: (name: string, email: string, password: string, age: number) => Promise<void>;
     logout: () => void;
+
+    // CRUD
     addExercise: (name: string, category: string) => Promise<void>;
     addSession: (session: CreateTrainingSession) => Promise<void>;
     deleteSession: (id: number) => Promise<void>;
@@ -20,12 +24,30 @@ interface DataContextType {
     importTemplate: (yamlContent: string) => Promise<boolean>;
     exportData: () => Promise<void>;
     importData: (jsonContent: string) => Promise<boolean>;
+
+    // Stats
     isLoading: boolean;
     streak: number;
     level: number;
     currentXP: number;
     nextLevelXP: number;
+    totalXP: number; // New field
+    calculateSessionXP: (session: TrainingSession) => number; // New helper
 }
+
+// XP Constants
+const XP_BASE = 100;
+const XP_PER_EXERCISE = 10;
+const XP_PER_SET = 5;
+
+export const calculateSessionXP = (session: TrainingSession): number => {
+    let xp = XP_BASE;
+    xp += session.exercises.length * XP_PER_EXERCISE;
+    xp += session.exercises.reduce((acc, ex) => {
+        return acc + ex.sets.filter(s => s.completed).length * XP_PER_SET;
+    }, 0);
+    return xp;
+};
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
@@ -96,7 +118,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const deleteSession = async (id: number) => {
-        await apiClient.delete(`/sessions/${id}`);
+        await apiClient.delete(`/ sessions / ${id} `);
         loadData(false);
     };
 
@@ -106,7 +128,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const updateTemplate = async (id: number, template: CreateWorkoutTemplate) => {
-        await apiClient.request(`/templates/${id}`, {
+        await apiClient.request(`/ templates / ${id} `, {
             method: 'PUT',
             body: JSON.stringify(template),
         });
@@ -114,12 +136,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const deleteTemplate = async (id: number) => {
-        await apiClient.delete(`/templates/${id}`);
+        await apiClient.delete(`/ templates / ${id} `);
         loadData(false);
     };
 
     const exportTemplate = async (id: number): Promise<string> => {
-        const resp = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/templates/${id}/export`, {
+        const resp = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'} /templates/${id}/export`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('fitness_auth_token')}` }
         });
         return resp.text();
@@ -186,23 +208,30 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [level, setLevel] = useState(1);
     const [currentXP, setCurrentXP] = useState(0);
     const [nextLevelXP, setNextLevelXP] = useState(500);
+    const [totalXP, setTotalXP] = useState(0);
 
     const calculateStats = useCallback(() => {
         if (!sessions.length) {
             setStreak(0);
             setLevel(1);
             setCurrentXP(0);
+            setTotalXP(0); // Reset total XP
             return;
         }
 
-        // 1. Calculate XP & Level (Simple: 100 XP per session, 500 XP per level)
-        const totalXP = sessions.length * 100;
-        const newLevel = Math.floor(totalXP / 500) + 1;
-        const levelXP = totalXP % 500;
+        // 1. Calculate XP & Level
+        // Use the new dynamic formula
+        const calculatedTotalXP = sessions.reduce((acc, session) => acc + calculateSessionXP(session), 0);
+
+        // Leveling Curve: 500 XP per level (linear for now, but could be quadratic)
+        const XP_PER_LEVEL = 500;
+        const newLevel = Math.floor(calculatedTotalXP / XP_PER_LEVEL) + 1;
+        const levelXP = calculatedTotalXP % XP_PER_LEVEL;
 
         setLevel(newLevel);
         setCurrentXP(levelXP);
-        setNextLevelXP(500);
+        setTotalXP(calculatedTotalXP);
+        setNextLevelXP(XP_PER_LEVEL);
 
         // 2. Calculate Streak
         // Sort sessions by date descending
@@ -257,10 +286,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 exercises,
                 sessions,
                 templates,
-                streak,
-                level,
-                currentXP,
-                nextLevelXP,
                 login,
                 register,
                 logout,
@@ -274,6 +299,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 importTemplate,
                 exportData,
                 importData,
+                streak,
+                level,
+                currentXP,
+                nextLevelXP,
+                totalXP,
+                calculateSessionXP,
             }}
         >
             {children}
