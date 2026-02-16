@@ -41,7 +41,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (showLoading) setIsLoading(true);
         try {
             const [paramsUser, paramsExercises, paramsSessions, paramsTemplates] = await Promise.all([
-                apiClient.get('/auth/me'),
+                apiClient.get('/users/me'),
                 apiClient.get('/exercises/'),
                 apiClient.get('/sessions/'),
                 apiClient.get('/templates/')
