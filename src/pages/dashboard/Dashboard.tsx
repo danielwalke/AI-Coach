@@ -1,52 +1,20 @@
 import React, { useState } from 'react';
 import { useData } from '../../context/DataContext';
 import ProgressChart from './ProgressChart';
-import { Activity, Clock, Trophy, X, ChevronRight } from 'lucide-react';
+import { X, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { TrainingSession } from '../../types/api';
 import GlassCard from '../../components/ui/GlassCard';
-import StatCard from '../../components/ui/StatCard';
 
 const Dashboard: React.FC = () => {
-    const { user, sessions } = useData();
+    const { user, sessions, streak, level, currentXP, nextLevelXP } = useData();
     const [selectedSession, setSelectedSession] = useState<TrainingSession | null>(null);
 
-    // Stats Calculations - moved before conditional return to satisfy Rules of Hooks.
-    // Note: checks for user/sessions availability are done inside or gracefully handled.
-    const streak = React.useMemo(() => {
-        if (!sessions || sessions.length === 0) return 0;
-        const sortedDates = [...new Set(sessions.map(s => new Date(s.date).toDateString()))]
-            .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-
-        if (sortedDates.length === 0) return 0;
-        const today = new Date().toDateString();
-        const yesterdayDate = new Date();
-        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-        const yesterday = yesterdayDate.toDateString();
-
-        if (sortedDates[0] !== today && sortedDates[0] !== yesterday) return 0;
-        let streakCount = 1;
-        let currentDate = new Date(sortedDates[0]);
-
-        for (let i = 1; i < sortedDates.length; i++) {
-            const prevDate = new Date(sortedDates[i]);
-            const diffTime = Math.abs(currentDate.getTime() - prevDate.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            if (diffDays === 1) {
-                streakCount++;
-                currentDate = prevDate;
-            } else {
-                break;
-            }
-        }
-        return streakCount;
-    }, [sessions]);
-
+    // Stats Grid
     if (!user) return null;
 
-    const totalSessions = sessions.length;
-    const totalDurationSeconds = sessions.reduce((acc, curr) => acc + curr.duration_seconds, 0);
-    const totalDurationHours = (totalDurationSeconds / 3600).toFixed(1);
+    // Calculate percent for progress bar
+    const xpPercent = Math.min(100, Math.max(0, (currentXP / nextLevelXP) * 100));
 
     return (
         <div className="flex flex-col gap-6 pb-32 pt-8 px-2 max-w-2xl mx-auto">
@@ -62,30 +30,26 @@ const Dashboard: React.FC = () => {
                 </Link>
             </header>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-4">
-                <StatCard
-                    title="Current Streak"
-                    value={streak}
-                    unit="days"
-                    icon={Trophy}
-                    iconColor="text-yellow-500"
-                    trend="Keep it up!"
-                    trendUp={true}
-                    className="col-span-2"
-                />
-                <StatCard
-                    title="Workouts"
-                    value={totalSessions}
-                    icon={Activity}
-                    iconColor="text-primary"
-                />
-                <StatCard
-                    title="Hours"
-                    value={totalDurationHours}
-                    icon={Clock}
-                    iconColor="text-green-500"
-                />
+            {/* Gamification Stats */}
+            <div className="grid grid-cols-3 gap-4 mb-2">
+                <div className="card text-center p-4 relative overflow-hidden bg-surface border border-border flex flex-col items-center justify-center shadow-sm">
+                    <div className="text-3xl mb-1 animate-bounce">🔥</div>
+                    <div className="font-black text-2xl text-text">{streak}</div>
+                    <div className="text-[10px] text-muted uppercase font-bold tracking-wider">Streak</div>
+                </div>
+                <div className="card text-center p-4 bg-surface border border-border flex flex-col items-center justify-center shadow-sm relative overflow-hidden">
+                    <div className="text-3xl mb-1">⚡</div>
+                    <div className="font-black text-2xl text-text">{currentXP}</div>
+                    <div className="text-[10px] text-muted uppercase font-bold tracking-wider">XP / {nextLevelXP}</div>
+                    <div className="absolute bottom-0 left-0 w-full h-1.5 bg-gray-800">
+                        <div className="h-full bg-yellow-400 transition-all duration-1000 ease-out" style={{ width: `${xpPercent}%` }}></div>
+                    </div>
+                </div>
+                <div className="card text-center p-4 bg-surface border border-border flex flex-col items-center justify-center shadow-sm">
+                    <div className="text-3xl mb-1">🏆</div>
+                    <div className="font-black text-2xl text-text">{level}</div>
+                    <div className="text-[10px] text-muted uppercase font-bold tracking-wider">Level</div>
+                </div>
             </div>
 
 

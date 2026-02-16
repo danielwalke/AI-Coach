@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Play, Plus, Trash2, Save, Clock, X, PlusCircle, StopCircle, Dumbbell, Trophy, ArrowRight } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import { useWorkout } from '../../context/WorkoutContext';
@@ -61,6 +62,14 @@ const ActiveSession: React.FC = () => {
             exerciseCount: sessionExercises.length,
             totalSets,
             quote: motivationalQuote || "Great workout! Keep it up! 💪",
+        });
+
+        // Trigger confetti
+        confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#6366f1', '#f43f5e', '#eab308', '#22c55e']
         });
 
         await finishSession();

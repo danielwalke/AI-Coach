@@ -21,6 +21,10 @@ interface DataContextType {
     exportData: () => Promise<void>;
     importData: (jsonContent: string) => Promise<boolean>;
     isLoading: boolean;
+    streak: number;
+    level: number;
+    currentXP: number;
+    nextLevelXP: number;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -185,6 +189,74 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
+    // Gamification Logic
+    const [streak, setStreak] = useState(0);
+    const [level, setLevel] = useState(1);
+    const [currentXP, setCurrentXP] = useState(0);
+    const [nextLevelXP, setNextLevelXP] = useState(500);
+
+    const calculateStats = useCallback(() => {
+        if (!sessions.length) {
+            setStreak(0);
+            setLevel(1);
+            setCurrentXP(0);
+            return;
+        }
+
+        // 1. Calculate XP & Level (Simple: 100 XP per session, 500 XP per level)
+        const totalXP = sessions.length * 100;
+        const newLevel = Math.floor(totalXP / 500) + 1;
+        const levelXP = totalXP % 500;
+
+        setLevel(newLevel);
+        setCurrentXP(levelXP);
+        setNextLevelXP(500);
+
+        // 2. Calculate Streak
+        // Sort sessions by date descending
+        const sortedSessions = [...sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        // Get unique dates (YYYY-MM-DD)
+        const uniqueDates = Array.from(new Set(sortedSessions.map(s => new Date(s.date).toISOString().split('T')[0])));
+
+        if (uniqueDates.length === 0) {
+            setStreak(0);
+            return;
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+        // Check if the most recent session was today or yesterday to keep streak alive
+        const lastSessionDate = uniqueDates[0];
+        if (lastSessionDate !== today && lastSessionDate !== yesterday) {
+            setStreak(0);
+            return;
+        }
+
+        let currentStreak = 1;
+        let currentDate = new Date(lastSessionDate);
+
+        for (let i = 1; i < uniqueDates.length; i++) {
+            const prevDate = new Date(uniqueDates[i]);
+            const diffTime = Math.abs(currentDate.getTime() - prevDate.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 1) {
+                currentStreak++;
+                currentDate = prevDate;
+            } else {
+                break;
+            }
+        }
+        setStreak(currentStreak);
+
+    }, [sessions]);
+
+    useEffect(() => {
+        calculateStats();
+    }, [calculateStats]);
+
     return (
         <DataContext.Provider
             value={{
@@ -193,6 +265,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 exercises,
                 sessions,
                 templates,
+                streak,
+                level,
+                currentXP,
+                nextLevelXP,
                 login,
                 register,
                 logout,
