@@ -39,8 +39,8 @@ const Dashboard: React.FC = () => {
                 </div>
                 <div className="card text-center p-4 bg-surface border border-border flex flex-col items-center justify-center shadow-sm relative overflow-hidden">
                     <div className="text-3xl mb-1">⚡</div>
-                    <div className="font-black text-2xl text-text">{currentXP}</div>
-                    <div className="text-[10px] text-muted uppercase font-bold tracking-wider">XP / {nextLevelXP}</div>
+                    <div className="font-black text-2xl text-text">{currentXP} <span className="text-sm text-muted font-normal">/ {nextLevelXP}</span></div>
+                    <div className="text-[10px] text-muted uppercase font-bold tracking-wider">Level Progress</div>
                     <div className="absolute bottom-0 left-0 w-full h-1.5 bg-gray-800">
                         <div className="h-full bg-yellow-400 transition-all duration-1000 ease-out" style={{ width: `${xpPercent}%` }}></div>
                     </div>
@@ -48,7 +48,7 @@ const Dashboard: React.FC = () => {
                 <div className="card text-center p-4 bg-surface border border-border flex flex-col items-center justify-center shadow-sm">
                     <div className="text-3xl mb-1">🏆</div>
                     <div className="font-black text-2xl text-text">{level}</div>
-                    <div className="text-[10px] text-muted uppercase font-bold tracking-wider">Level</div>
+                    <div className="text-[10px] text-muted uppercase font-bold tracking-wider">Current Level</div>
                 </div>
             </div>
 
@@ -83,7 +83,10 @@ const Dashboard: React.FC = () => {
                                 onClick={() => setSelectedSession(session)}
                             >
                                 <div className="flex flex-col gap-1">
-                                    <div className="font-bold text-text text-lg">{new Date(session.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="font-bold text-text text-lg">{new Date(session.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+                                        <span className="text-[10px] font-bold bg-yellow-500/10 text-yellow-600 px-1.5 py-0.5 rounded border border-yellow-500/20">+100 XP</span>
+                                    </div>
                                     <div className="text-xs text-muted font-medium uppercase tracking-wide">{session.exercises.length} Exercises • {Math.floor(session.duration_seconds / 60)} min</div>
                                 </div>
                                 <div className="p-2 rounded-full bg-surface-highlight text-muted group-hover:text-primary transition-colors">

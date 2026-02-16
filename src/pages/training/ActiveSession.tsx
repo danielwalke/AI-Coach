@@ -123,23 +123,30 @@ const ActiveSession: React.FC = () => {
                     </div>
 
                     {/* Motivational quote */}
-                    <div className="rounded-2xl p-5 mb-8 border border-border"
+                    {/* Quote Card */}
+                    <div className="rounded-2xl p-6 mb-8 border border-border bg-surface shadow-lg relative z-10"
                         style={{
                             background: 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.1))',
                             borderColor: 'var(--color-border)',
                         }}
                     >
-                        <p className="text-lg text-text italic leading-relaxed">
+                        <p className="text-xl text-text italic leading-relaxed font-medium">
                             "{summary.quote}"
                         </p>
-                        <p className="text-xs text-muted mt-2">— AI-Coach</p>
+                        <p className="text-sm text-muted mt-3 font-semibold tracking-wide">— AI Coach</p>
+                    </div>
+
+                    {/* XP Gained Badge */}
+                    <div className="mb-8 animate-bounce delay-100 dark:text-yellow-400 text-yellow-600 font-black text-2xl flex items-center justify-center gap-2">
+                        <span>⚡</span>
+                        <span>+100 XP Gained!</span>
                     </div>
 
                     <button
                         onClick={dismissSummary}
-                        className="btn btn-primary text-lg px-8 py-3 flex items-center gap-2 mx-auto"
+                        className="btn btn-primary text-lg px-8 py-4 flex items-center gap-3 mx-auto shadow-xl hover:scale-105 transition-transform relative z-20"
                     >
-                        Continue <ArrowRight size={20} />
+                        Continue <ArrowRight size={22} />
                     </button>
                 </div>
             </div>
