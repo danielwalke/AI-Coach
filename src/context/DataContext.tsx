@@ -36,16 +36,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    const loadData = useCallback(async () => {
-        const token = localStorage.getItem('fitness_auth_token');
-        if (!token) {
-            setIsLoading(false);
-            return;
-        }
+    const loadData = useCallback(async (showLoading = true) => {
+        if (!localStorage.getItem('fitness_auth_token')) return;
+        if (showLoading) setIsLoading(true);
         try {
-            setIsLoading(true);
             const [paramsUser, paramsExercises, paramsSessions, paramsTemplates] = await Promise.all([
-                apiClient.get('/users/me'),
+                apiClient.get('/auth/me'),
                 apiClient.get('/exercises/'),
                 apiClient.get('/sessions/'),
                 apiClient.get('/templates/')
@@ -56,12 +52,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setTemplates(paramsTemplates);
         } catch (error) {
             console.error("Failed to load data:", error);
-            // Only clear state if we strictly believe it's an auth error (handled by client usually)
-            // But let's not aggressively wipe localStorage here to avoid race-condition logouts
-            // setUser(null); 
-            // localStorage.removeItem('fitness_auth_token');
         } finally {
-            setIsLoading(false);
+            if (showLoading) setIsLoading(false);
         }
     }, []);
 
@@ -95,22 +87,22 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const addExercise = async (name: string, category: string) => {
         await apiClient.post('/exercises/', { name, category, is_custom: true });
-        loadData();
+        loadData(false);
     };
 
     const addSession = async (session: CreateTrainingSession) => {
         await apiClient.post('/sessions/', session);
-        loadData();
+        loadData(false);
     };
 
     const deleteSession = async (id: number) => {
         await apiClient.delete(`/sessions/${id}`);
-        loadData();
+        loadData(false);
     };
 
     const addTemplate = async (template: CreateWorkoutTemplate) => {
         await apiClient.post('/templates/', template);
-        loadData();
+        loadData(false);
     };
 
     const updateTemplate = async (id: number, template: CreateWorkoutTemplate) => {
@@ -118,12 +110,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             method: 'PUT',
             body: JSON.stringify(template),
         });
-        loadData();
+        loadData(false);
     };
 
     const deleteTemplate = async (id: number) => {
         await apiClient.delete(`/templates/${id}`);
-        loadData();
+        loadData(false);
     };
 
     const exportTemplate = async (id: number): Promise<string> => {
@@ -136,7 +128,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const importTemplate = async (yamlContent: string): Promise<boolean> => {
         try {
             await apiClient.post('/templates/import', { yaml_content: yamlContent });
-            loadData();
+            loadData(false);
             return true;
         } catch (e) {
             console.error('Import failed:', e);

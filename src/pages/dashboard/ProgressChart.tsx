@@ -53,9 +53,9 @@ const ProgressChart: React.FC = () => {
                 </select>
             </div>
 
-            <div className="flex-1 w-full" data-testid="chart-container">
+            <div className="flex-1 w-full min-h-[300px]" data-testid="chart-container">
                 {data.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="99%">
                         <LineChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
