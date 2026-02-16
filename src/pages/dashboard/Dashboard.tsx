@@ -75,11 +75,11 @@ const Dashboard: React.FC = () => {
                         <Link to="/training" className="btn btn-primary shadow-lg shadow-primary/30">Start your first session</Link>
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-3">
-                        {[...sessions].reverse().slice(0, 3).map(session => (
+                    <div className="flex flex-col gap-3 max-h-[500px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-surface-highlight scrollbar-track-transparent">
+                        {[...sessions].reverse().map(session => (
                             <GlassCard
                                 key={session.id}
-                                className="p-5 flex justify-between items-center group active:scale-[0.99]"
+                                className="p-5 flex justify-between items-center group active:scale-[0.99] shrink-0"
                                 onClick={() => setSelectedSession(session)}
                             >
                                 <div className="flex flex-col gap-1">

@@ -87,66 +87,45 @@ const ActiveSession: React.FC = () => {
             <div className="flex flex-col items-center justify-center h-[75vh] px-4">
                 <div className="w-full max-w-sm text-center">
                     {/* Trophy animation */}
-                    <div className="mb-6 relative">
-                        <div className="w-24 h-24 mx-auto rounded-full flex items-center justify-center"
-                            style={{
-                                background: 'linear-gradient(135deg, #f59e0b, #ef4444, #8b5cf6)',
-                                animation: 'pulse 2s ease-in-out infinite',
-                            }}
-                        >
-                            <Trophy size={48} className="text-white" />
+                    <div className="mb-6 relative w-fit mx-auto">
+                        <Trophy size={80} className="text-yellow-500 animate-bounce drop-shadow-lg" />
+                        <div className="absolute -top-4 -right-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse shadow-md">
+                            NEW RECORD!
                         </div>
                     </div>
 
-                    <h1 className="text-3xl font-black text-text mb-2">Workout Complete!</h1>
+                    <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-600 mb-6 drop-shadow-sm">
+                        Workout Complete!
+                    </h2>
 
-                    {/* Stats row */}
-                    <div className="flex justify-center gap-6 my-6">
-                        <div className="flex flex-col items-center">
-                            <span className="text-2xl font-black" style={{ color: 'var(--color-primary)' }}>
-                                {formatTime(summary.duration)}
-                            </span>
-                            <span className="text-xs text-muted uppercase font-bold">Duration</span>
-                        </div>
-                        <div className="flex flex-col items-center">
-                            <span className="text-2xl font-black" style={{ color: 'var(--color-primary)' }}>
-                                {summary.exerciseCount}
-                            </span>
-                            <span className="text-xs text-muted uppercase font-bold">Exercises</span>
-                        </div>
-                        <div className="flex flex-col items-center">
-                            <span className="text-2xl font-black" style={{ color: 'var(--color-primary)' }}>
-                                {summary.totalSets}
-                            </span>
-                            <span className="text-xs text-muted uppercase font-bold">Sets</span>
-                        </div>
+                    <div className="flex justify-center gap-4 mb-8 text-sm font-bold text-muted uppercase tracking-wider">
+                        <span>{formatTime(summary.duration)}</span>
+                        <span>•</span>
+                        <span>{summary.exerciseCount} Exercises</span>
+                        <span>•</span>
+                        <span>{summary.totalSets} Sets</span>
                     </div>
 
-                    {/* Motivational quote */}
-                    {/* Quote Card */}
-                    <div className="rounded-2xl p-6 mb-8 border border-border bg-surface shadow-lg relative z-10"
-                        style={{
-                            background: 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.1))',
-                            borderColor: 'var(--color-border)',
-                        }}
+                    {/* MOIVATIONAL QUOTE - HIGH VISIBILITY */}
+                    <div className="rounded-2xl p-6 mb-8 border-2 border-primary shadow-2xl relative z-50 transform hover:scale-105 transition-transform duration-300 bg-surface"
                     >
-                        <p className="text-xl text-text italic leading-relaxed font-medium">
+                        <p className="text-xl text-text font-serif italic leading-relaxed font-bold">
                             "{summary.quote}"
                         </p>
-                        <p className="text-sm text-muted mt-3 font-semibold tracking-wide">— AI Coach</p>
+                        <p className="text-sm text-primary mt-3 font-bold tracking-widest uppercase">— AI Coach</p>
                     </div>
 
                     {/* XP Gained Badge */}
-                    <div className="mb-8 animate-bounce delay-100 dark:text-yellow-400 text-yellow-600 font-black text-2xl flex items-center justify-center gap-2">
+                    <div className="mb-10 animate-bounce delay-100 dark:text-yellow-400 text-yellow-600 font-black text-3xl flex items-center justify-center gap-2 bg-surface-highlight py-3 px-6 rounded-full mx-auto w-fit shadow-md border border-yellow-500/30">
                         <span>⚡</span>
-                        <span>+100 XP Gained!</span>
+                        <span>+100 XP</span>
                     </div>
 
                     <button
                         onClick={dismissSummary}
-                        className="btn btn-primary text-lg px-8 py-4 flex items-center gap-3 mx-auto shadow-xl hover:scale-105 transition-transform relative z-20"
+                        className="btn btn-primary text-xl px-12 py-4 flex items-center justify-center gap-3 mx-auto shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all w-full font-bold relative z-50"
                     >
-                        Continue <ArrowRight size={22} />
+                        Continue <ArrowRight size={24} />
                     </button>
                 </div>
             </div>
