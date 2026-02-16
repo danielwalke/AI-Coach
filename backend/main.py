@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.database import create_db_and_tables
-from backend.routers import auth, users, exercises, sessions, coach
+from backend.routers import auth, users, exercises, sessions, coach, templates
 from backend.seed import seed_exercises
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ app.include_router(users.router)
 app.include_router(exercises.router)
 app.include_router(sessions.router)
 app.include_router(coach.router)
+app.include_router(templates.router)
 
 @app.get("/")
 def read_root():

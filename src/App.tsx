@@ -7,6 +7,7 @@ import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
 import Dashboard from './pages/dashboard/Dashboard';
 import ActiveSession from './pages/training/ActiveSession';
+import TemplateManager from './pages/training/TemplateManager';
 import Profile from './pages/Profile';
 import HealthCoach from './pages/health-coach/HealthCoach';
 
@@ -55,6 +56,14 @@ const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute>
               <ActiveSession />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="templates"
+          element={
+            <ProtectedRoute>
+              <TemplateManager />
             </ProtectedRoute>
           }
         />

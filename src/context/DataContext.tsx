@@ -1,17 +1,23 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { apiClient } from '../api/client';
-import type { User, Exercise, TrainingSession, CreateTrainingSession } from '../types/api';
+import type { User, Exercise, TrainingSession, CreateTrainingSession, WorkoutTemplate, CreateWorkoutTemplate } from '../types/api';
 
 interface DataContextType {
     user: User | null;
     exercises: Exercise[];
     sessions: TrainingSession[];
+    templates: WorkoutTemplate[];
     login: (email: string, password?: string) => Promise<void>;
     register: (name: string, email: string, password: string, age: number) => Promise<void>;
     logout: () => void;
     addExercise: (name: string, category: string) => Promise<void>;
     addSession: (session: CreateTrainingSession) => Promise<void>;
     deleteSession: (id: number) => Promise<void>;
+    addTemplate: (template: CreateWorkoutTemplate) => Promise<void>;
+    updateTemplate: (id: number, template: CreateWorkoutTemplate) => Promise<void>;
+    deleteTemplate: (id: number) => Promise<void>;
+    exportTemplate: (id: number) => Promise<string>;
+    importTemplate: (yamlContent: string) => Promise<boolean>;
     exportData: () => Promise<void>;
     importData: (jsonContent: string) => Promise<boolean>;
     isLoading: boolean;
@@ -23,6 +29,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [user, setUser] = useState<User | null>(null);
     const [exercises, setExercises] = useState<Exercise[]>([]);
     const [sessions, setSessions] = useState<TrainingSession[]>([]);
+    const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const loadData = useCallback(async () => {
@@ -33,14 +40,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         try {
             setIsLoading(true);
-            const [paramsUser, paramsExercises, paramsSessions] = await Promise.all([
+            const [paramsUser, paramsExercises, paramsSessions, paramsTemplates] = await Promise.all([
                 apiClient.get('/users/me'),
                 apiClient.get('/exercises/'),
-                apiClient.get('/sessions/')
+                apiClient.get('/sessions/'),
+                apiClient.get('/templates/')
             ]);
             setUser(paramsUser);
             setExercises(paramsExercises);
             setSessions(paramsSessions);
+            setTemplates(paramsTemplates);
         } catch (error) {
             console.error("Failed to load data:", error);
             // Only clear state if we strictly believe it's an auth error (handled by client usually)
@@ -95,6 +104,42 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loadData();
     };
 
+    const addTemplate = async (template: CreateWorkoutTemplate) => {
+        await apiClient.post('/templates/', template);
+        loadData();
+    };
+
+    const updateTemplate = async (id: number, template: CreateWorkoutTemplate) => {
+        await apiClient.request(`/templates/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(template),
+        });
+        loadData();
+    };
+
+    const deleteTemplate = async (id: number) => {
+        await apiClient.delete(`/templates/${id}`);
+        loadData();
+    };
+
+    const exportTemplate = async (id: number): Promise<string> => {
+        const resp = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/templates/${id}/export`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('fitness_auth_token')}` }
+        });
+        return resp.text();
+    };
+
+    const importTemplate = async (yamlContent: string): Promise<boolean> => {
+        try {
+            await apiClient.post('/templates/import', { yaml_content: yamlContent });
+            loadData();
+            return true;
+        } catch (e) {
+            console.error('Import failed:', e);
+            return false;
+        }
+    };
+
     const exportData = async () => {
         if (!user) return;
         const data = {
@@ -147,12 +192,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 isLoading,
                 exercises,
                 sessions,
+                templates,
                 login,
                 register,
                 logout,
                 addExercise,
                 addSession,
                 deleteSession,
+                addTemplate,
+                updateTemplate,
+                deleteTemplate,
+                exportTemplate,
+                importTemplate,
                 exportData,
                 importData,
             }}

@@ -1,15 +1,19 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useData } from './DataContext';
 import { useNavigate } from 'react-router-dom';
+import { apiClient } from '../api/client';
+import type { WorkoutTemplate } from '../types/api';
 
-// Interfaces (moved from ActiveSession)
 export interface LocalTrainingSet {
     id: string;
     weight: number;
     reps: number;
     completed: boolean;
-    restSeconds?: number; // Store rest time taken BEFORE this set
+    restSeconds?: number;
+    setDuration?: number;
+    goalWeight?: number;
+    goalReps?: number;
 }
 
 export interface LocalSessionExercise {
@@ -17,13 +21,19 @@ export interface LocalSessionExercise {
     sets: LocalTrainingSet[];
 }
 
+export type TimerMode = 'set' | 'rest';
+
 interface WorkoutContextType {
     isActive: boolean;
     elapsedTime: number;
     sessionExercises: LocalSessionExercise[];
-    isResting: boolean;
-    restTimer: number;
+    timerMode: TimerMode;
+    modeTimer: number;
+    templateName: string | null;
+    motivationalQuote: string | null;
+    toggleTimerMode: () => void;
     startSession: () => void;
+    startFromTemplate: (template: WorkoutTemplate) => void;
     cancelSession: () => void;
     finishSession: () => Promise<void>;
     addExercise: (exerciseId: number) => void;
@@ -32,6 +42,17 @@ interface WorkoutContextType {
     updateSet: (exerciseIndex: number, setIndex: number, field: keyof LocalTrainingSet, value: string | number | boolean) => void;
     removeSet: (exerciseIndex: number, setIndex: number) => void;
 }
+
+const FALLBACK_QUOTES = [
+    "Every rep counts. You showed up, and that's what matters! 💪",
+    "Consistency beats perfection. Another session in the books! 🔥",
+    "You didn't come this far to only come this far. Keep pushing! 🚀",
+    "The only bad workout is the one that didn't happen. Great job! ⭐",
+    "Your future self will thank you for today's effort! 💯",
+    "Champions are made in the sessions nobody watches. Well done! 🏆",
+    "Discipline is choosing between what you want now and what you want most. 🎯",
+    "You're building something great, one workout at a time! 🏗️",
+];
 
 const WorkoutContext = createContext<WorkoutContextType | undefined>(undefined);
 
@@ -43,10 +64,15 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const [isActive, setIsActive] = useState(false);
     const [elapsedTime, setElapsedTime] = useState(0);
     const [sessionExercises, setSessionExercises] = useState<LocalSessionExercise[]>([]);
+    const [templateName, setTemplateName] = useState<string | null>(null);
+    const [motivationalQuote, setMotivationalQuote] = useState<string | null>(null);
 
-    // Rest Timer State
-    const [isResting, setIsResting] = useState(false);
-    const [restTimer, setRestTimer] = useState(0);
+    // Timer Mode
+    const [timerMode, setTimerMode] = useState<TimerMode>('set');
+    const [modeTimer, setModeTimer] = useState(0);
+
+    // Track current set
+    const [currentSetRef, setCurrentSetRef] = useState<{ ex: number; set: number } | null>(null);
 
     // Workout Timer
     useEffect(() => {
@@ -59,31 +85,144 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return () => clearInterval(interval);
     }, [isActive]);
 
-    // Rest Timer Interaction
+    // Mode Timer
     useEffect(() => {
         let interval: number;
-        if (isResting) {
+        if (isActive) {
             interval = window.setInterval(() => {
-                setRestTimer(prev => prev + 1);
+                setModeTimer(prev => prev + 1);
             }, 1000);
         }
         return () => clearInterval(interval);
-    }, [isResting]);
+    }, [isActive, timerMode]);
+
+    const modeTimerRef = useRef(modeTimer);
+    useEffect(() => { modeTimerRef.current = modeTimer; }, [modeTimer]);
+
+    // Pre-fetch motivational quote from LLM
+    const fetchMotivationalQuote = async (tplName?: string | null) => {
+        const fallback = FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)];
+        setMotivationalQuote(fallback); // Set fallback immediately
+
+        try {
+            const data = await apiClient.post('/coach/motivate', {
+                duration_seconds: 0,
+                exercise_count: 0,
+                total_sets: 0,
+                template_name: tplName || null,
+            });
+            if (data?.quote) {
+                setMotivationalQuote(data.quote);
+            }
+        } catch {
+            // Keep fallback
+        }
+    };
+
+    const toggleTimerMode = () => {
+        const elapsed = modeTimerRef.current;
+
+        if (timerMode === 'set') {
+            if (currentSetRef) {
+                setSessionExercises(prev => prev.map((ex, i) => {
+                    if (i !== currentSetRef.ex) return ex;
+                    return {
+                        ...ex,
+                        sets: ex.sets.map((s, j) => {
+                            if (j === currentSetRef.set) {
+                                return { ...s, setDuration: (s.setDuration || 0) + elapsed, completed: true };
+                            }
+                            return s;
+                        })
+                    };
+                }));
+            }
+            setTimerMode('rest');
+        } else {
+            let found = false;
+            setSessionExercises(prev => {
+                const updated = prev.map((ex, i) => {
+                    if (found) return ex;
+                    return {
+                        ...ex,
+                        sets: ex.sets.map((s, j) => {
+                            if (found) return s;
+                            if (!s.completed && s.restSeconds === undefined) {
+                                found = true;
+                                setCurrentSetRef({ ex: i, set: j });
+                                return { ...s, restSeconds: elapsed };
+                            }
+                            return s;
+                        })
+                    };
+                });
+                if (!found && currentSetRef) {
+                    return updated.map((ex, i) => {
+                        if (i !== currentSetRef.ex) return ex;
+                        return {
+                            ...ex,
+                            sets: ex.sets.map((s, j) => {
+                                if (j === currentSetRef.set) {
+                                    return { ...s, restSeconds: (s.restSeconds || 0) + elapsed };
+                                }
+                                return s;
+                            })
+                        };
+                    });
+                }
+                return updated;
+            });
+            setTimerMode('set');
+        }
+
+        setModeTimer(0);
+    };
 
     const startSession = () => {
         setIsActive(true);
         setElapsedTime(0);
         setSessionExercises([]);
-        setIsResting(false);
-        setRestTimer(0);
+        setTimerMode('set');
+        setModeTimer(0);
+        setTemplateName(null);
+        setCurrentSetRef(null);
+        fetchMotivationalQuote(null);
+    };
+
+    const startFromTemplate = (template: WorkoutTemplate) => {
+        setIsActive(true);
+        setElapsedTime(0);
+        setTimerMode('set');
+        setModeTimer(0);
+        setTemplateName(template.name);
+
+        const exercises: LocalSessionExercise[] = template.exercises.map(tex => ({
+            exerciseId: tex.exercise.id,
+            sets: tex.sets.map(s => ({
+                id: uuidv4(),
+                weight: s.goal_weight,
+                reps: s.goal_reps,
+                completed: false,
+                goalWeight: s.goal_weight,
+                goalReps: s.goal_reps,
+            }))
+        }));
+        setSessionExercises(exercises);
+        if (exercises.length > 0 && exercises[0].sets.length > 0) {
+            setCurrentSetRef({ ex: 0, set: 0 });
+        }
+        fetchMotivationalQuote(template.name);
     };
 
     const cancelSession = () => {
         if (confirm("Are you sure you want to cancel the workout? All progress will be lost.")) {
             setIsActive(false);
             setSessionExercises([]);
-            setIsResting(false);
-            setRestTimer(0);
+            setTimerMode('set');
+            setModeTimer(0);
+            setTemplateName(null);
+            setCurrentSetRef(null);
+            setMotivationalQuote(null);
             navigate('/dashboard');
         }
     };
@@ -91,101 +230,97 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const finishSession = async () => {
         if (!user) return;
 
-        // Transform local state to API format
-        const apiExercises = sessionExercises.map(ex => ({
-            exercise_id: ex.exerciseId,
-            sets: ex.sets.map(s => ({
-                weight: s.weight,
-                reps: s.reps,
-                completed: true,
-                rest_seconds: s.restSeconds
-            }))
-        }));
-
-        await addSession({
-            date: new Date().toISOString(),
-            duration_seconds: elapsedTime,
-            exercises: apiExercises
-        });
+        if (timerMode === 'set' && currentSetRef) {
+            const finalSetDuration = modeTimer;
+            const apiExercises = sessionExercises.map((ex, i) => ({
+                exercise_id: ex.exerciseId,
+                sets: ex.sets.map((s, j) => ({
+                    weight: s.weight,
+                    reps: s.reps,
+                    completed: true,
+                    rest_seconds: s.restSeconds || 0,
+                    set_duration: (i === currentSetRef.ex && j === currentSetRef.set)
+                        ? (s.setDuration || 0) + finalSetDuration
+                        : (s.setDuration || 0),
+                    goal_weight: s.goalWeight,
+                    goal_reps: s.goalReps,
+                }))
+            }));
+            await addSession({ date: new Date().toISOString(), duration_seconds: elapsedTime, exercises: apiExercises });
+        } else {
+            const apiExercises = sessionExercises.map(ex => ({
+                exercise_id: ex.exerciseId,
+                sets: ex.sets.map(s => ({
+                    weight: s.weight,
+                    reps: s.reps,
+                    completed: true,
+                    rest_seconds: s.restSeconds || 0,
+                    set_duration: s.setDuration || 0,
+                    goal_weight: s.goalWeight,
+                    goal_reps: s.goalReps,
+                }))
+            }));
+            await addSession({ date: new Date().toISOString(), duration_seconds: elapsedTime, exercises: apiExercises });
+        }
 
         setIsActive(false);
-        setIsResting(false);
-        setRestTimer(0);
-        navigate('/dashboard');
+        setTimerMode('set');
+        setModeTimer(0);
+        setTemplateName(null);
+        setCurrentSetRef(null);
+        // Don't clear motivationalQuote — summary modal reads it
     };
 
     const addExercise = (exerciseId: number) => {
-        setIsResting(true);
-        setRestTimer(0);
-
         const newSessionExercise: LocalSessionExercise = {
             exerciseId,
-            sets: [
-                { id: uuidv4(), weight: 0, reps: 0, completed: false }
-            ]
+            sets: [{ id: uuidv4(), weight: 0, reps: 0, completed: false }]
         };
-        setSessionExercises(prev => [...prev, newSessionExercise]);
+        setSessionExercises(prev => {
+            const next = [...prev, newSessionExercise];
+            if (!currentSetRef) {
+                setCurrentSetRef({ ex: next.length - 1, set: 0 });
+            }
+            return next;
+        });
     };
 
     const removeExercise = (index: number) => {
         setSessionExercises(prev => prev.filter((_, i) => i !== index));
+        if (currentSetRef && currentSetRef.ex === index) {
+            setCurrentSetRef(null);
+        }
     };
 
     const addSet = (exerciseIndex: number) => {
-        // Stop current rest if running and save it to the PREVIOUS set? 
-        // Or just start a new rest.
-        // Logic: User finished a set, clicks "Add Set". Rest timer starts.
-
-        setIsResting(true);
-        setRestTimer(0);
-
         setSessionExercises(prev => prev.map((ex, i) => {
             if (i !== exerciseIndex) return ex;
-
             const previousSet = ex.sets[ex.sets.length - 1];
             const newSet: LocalTrainingSet = {
                 id: uuidv4(),
                 weight: previousSet ? previousSet.weight : 0,
                 reps: previousSet ? previousSet.reps : 0,
-                completed: false
+                completed: false,
+                goalWeight: previousSet?.goalWeight,
+                goalReps: previousSet?.goalReps,
             };
-
             return { ...ex, sets: [...ex.sets, newSet] };
         }));
     };
 
     const updateSet = (exerciseIndex: number, setIndex: number, field: keyof LocalTrainingSet, value: string | number | boolean) => {
-        // If user interacts with a set, stop the rest timer
-        if (isResting) {
-            setIsResting(false);
-            // Optionally save the rest timer value to this set as "rest taken before this set"
-            // We just store it in the set currently being edited IF it's the last one?
-            // Let's attach it to the set being updated for now if we want to track it.
-            setSessionExercises(prev => prev.map((ex, i) => {
-                if (i !== exerciseIndex) return ex;
-                return {
-                    ...ex,
-                    sets: ex.sets.map((s, j) => {
-                        if (j === setIndex) {
-                            // Only assign rest time if it hasn't been assigned yet? 
-                            // Or overwrite? Let's assign if undefined.
-                            return { ...s, [field]: value, restSeconds: s.restSeconds === undefined ? restTimer : s.restSeconds };
-                        }
-                        return s;
-                    })
-                };
-            }));
-        } else {
-            setSessionExercises(prev => prev.map((ex, i) => {
-                if (i !== exerciseIndex) return ex;
-                return {
-                    ...ex,
-                    sets: ex.sets.map((s, j) => {
-                        if (j === setIndex) return { ...s, [field]: value };
-                        return s;
-                    })
-                };
-            }));
+        setSessionExercises(prev => prev.map((ex, i) => {
+            if (i !== exerciseIndex) return ex;
+            return {
+                ...ex,
+                sets: ex.sets.map((s, j) => {
+                    if (j === setIndex) return { ...s, [field]: value };
+                    return s;
+                })
+            };
+        }));
+        if (!currentSetRef || currentSetRef.ex !== exerciseIndex || currentSetRef.set !== setIndex) {
+            setCurrentSetRef({ ex: exerciseIndex, set: setIndex });
         }
     };
 
@@ -202,9 +337,13 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 isActive,
                 elapsedTime,
                 sessionExercises,
-                isResting,
-                restTimer,
+                timerMode,
+                modeTimer,
+                templateName,
+                motivationalQuote,
+                toggleTimerMode,
                 startSession,
+                startFromTemplate,
                 cancelSession,
                 finishSession,
                 addExercise,

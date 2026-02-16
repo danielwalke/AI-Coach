@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ReactMarkdown from 'react-markdown';
 // @ts-ignore
 import { apiClient } from '../api/client';
 import GlassCard from './ui/GlassCard';
@@ -14,6 +13,8 @@ import {
     Check,
     Plus
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ChatMessage {
     id: string;
@@ -33,15 +34,35 @@ const CoachChat: React.FC = () => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
+    const [modelSource, setModelSource] = useState<'web' | 'local'>('web');
     const [sessions, setSessions] = useState<SessionOption[]>([]);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [showSessionPicker, setShowSessionPicker] = useState(false);
     const [expandedThinking, setExpandedThinking] = useState<Set<string>>(new Set());
+
+    // Dropdown state
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
     const chatEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         fetchSessions();
+    }, []);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
     }, []);
 
     useEffect(() => {
@@ -119,6 +140,7 @@ const CoachChat: React.FC = () => {
                     messages: history,
                     session_ids: selectedIds,
                     question,
+                    model_source: modelSource,
                 }),
             });
 
@@ -197,12 +219,46 @@ const CoachChat: React.FC = () => {
         <GlassCard className="p-0 overflow-hidden flex flex-col" style={{ minHeight: '500px' }}>
             {/* Header */}
             <div className="p-4 border-b border-border flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <Sparkles size={20} className="text-primary" />
-                    <h3 className="text-lg font-bold text-text">AI Coach</h3>
-                    <span className="text-xs text-muted bg-surface-highlight px-2 py-0.5 rounded-full">
-                        Local AI
-                    </span>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        <Sparkles size={20} className="text-primary" />
+                        <h3 className="text-lg font-bold text-text">AI Coach</h3>
+                    </div>
+                    {/* Model Source Dropdown */}
+                    <div className="relative" ref={dropdownRef}>
+                        <button
+                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                            className="flex items-center gap-1.5 text-xs font-medium bg-surface-highlight hover:bg-border px-3 py-1.5 rounded-full text-text transition-colors"
+                        >
+                            {modelSource === 'web' ? 'Fast & Web' : 'Slow & Server-only'}
+                            <ChevronDown size={12} className={`text-muted transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {isDropdownOpen && (
+                            <div className="absolute top-full left-0 mt-2 w-56 bg-surface border border-border rounded-xl shadow-xl overflow-hidden z-20">
+                                <button
+                                    onClick={() => { setModelSource('web'); setIsDropdownOpen(false); }}
+                                    className={`w-full text-left px-4 py-3 text-sm flex items-center gap-2 hover:bg-surface-highlight transition-colors ${modelSource === 'web' ? 'text-primary bg-primary/5' : 'text-text'}`}
+                                >
+                                    <Sparkles size={14} />
+                                    <div className="flex flex-col">
+                                        <span className="font-semibold">Fast & Web</span>
+                                        <span className="text-[10px] text-muted font-normal">GPT-4o / Open-Source (Free)</span>
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={() => { setModelSource('local'); setIsDropdownOpen(false); }}
+                                    className={`w-full text-left px-4 py-3 text-sm flex items-center gap-2 hover:bg-surface-highlight transition-colors ${modelSource === 'local' ? 'text-primary bg-primary/5' : 'text-text'}`}
+                                >
+                                    <Brain size={14} />
+                                    <div className="flex flex-col">
+                                        <span className="font-semibold">Slow & Server-only</span>
+                                        <span className="text-[10px] text-muted font-normal">Local LLM with reasoning</span>
+                                    </div>
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <button
                     onClick={() => setShowSessionPicker(!showSessionPicker)}
@@ -274,11 +330,11 @@ const CoachChat: React.FC = () => {
                             {msg.role === 'assistant' && msg.thinking && (
                                 <button
                                     onClick={() => toggleThinking(msg.id)}
-                                    className="flex items-center gap-1 text-xs text-muted hover:text-text mb-1 transition-colors"
+                                    className="flex items-center gap-1.5 text-xs font-medium text-muted hover:text-primary mb-2 px-2 py-1 rounded hover:bg-primary/5 transition-all w-full select-none"
                                 >
-                                    {expandedThinking.has(msg.id) ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                    {expandedThinking.has(msg.id) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                     <Brain size={12} />
-                                    <span>Thinking</span>
+                                    <span>Thought Process</span>
                                 </button>
                             )}
                             {msg.role === 'assistant' && msg.thinking && expandedThinking.has(msg.id) && (
@@ -291,8 +347,23 @@ const CoachChat: React.FC = () => {
                             <div className="break-words">
                                 {msg.content ? (
                                     msg.role === 'assistant' ? (
-                                        <div className="prose prose-sm prose-invert max-w-none [&_h1]:text-base [&_h1]:font-bold [&_h1]:mb-2 [&_h1]:mt-3 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:mb-1.5 [&_h2]:mt-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mb-1 [&_h3]:mt-2 [&_p]:mb-1.5 [&_p]:leading-relaxed [&_ul]:mb-1.5 [&_ul]:pl-4 [&_ol]:mb-1.5 [&_ol]:pl-4 [&_li]:mb-0.5 [&_code]:bg-black/20 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_pre]:bg-black/20 [&_pre]:p-2 [&_pre]:rounded-lg [&_pre]:mb-2 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_strong]:font-bold [&_em]:italic [&_blockquote]:border-l-2 [&_blockquote]:border-muted [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-muted [&_table]:w-full [&_table]:text-xs [&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_th]:bg-black/10 [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1 [&_hr]:border-border [&_hr]:my-2">
-                                            <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                        <div className="markdown-body">
+                                            <ReactMarkdown
+                                                remarkPlugins={[remarkGfm]}
+                                                components={{
+                                                    // Customize markdown styling if needed, or use a prose class
+                                                    p: ({ node, ...props }) => <p className="mb-2 last:mb-0 leading-relaxed" {...props} />,
+                                                    ul: ({ node, ...props }) => <ul className="list-disc list-outside ml-4 mb-2 space-y-1" {...props} />,
+                                                    ol: ({ node, ...props }) => <ol className="list-decimal list-outside ml-4 mb-2 space-y-1" {...props} />,
+                                                    li: ({ node, ...props }) => <li className="pl-1" {...props} />,
+                                                    strong: ({ node, ...props }) => <strong className="font-semibold text-primary/90" {...props} />,
+                                                    code: ({ node, ...props }) => (
+                                                        <code className="bg-surface border border-border rounded px-1 py-0.5 text-xs font-mono text-primary" {...props} />
+                                                    ),
+                                                }}
+                                            >
+                                                {msg.content}
+                                            </ReactMarkdown>
                                         </div>
                                     ) : (
                                         <span className="whitespace-pre-wrap">{msg.content}</span>

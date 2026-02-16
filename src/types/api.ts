@@ -27,6 +27,9 @@ export interface TrainingSet {
     reps: number;
     completed: boolean;
     rest_seconds?: number;
+    set_duration?: number;
+    goal_weight?: number;
+    goal_reps?: number;
 }
 
 export interface SessionExercise {
@@ -51,5 +54,36 @@ export interface CreateTrainingSession {
     exercises: {
         exercise_id: number;
         sets: Omit<TrainingSet, 'id'>[];
+    }[];
+}
+
+// --- Template Types ---
+
+export interface TemplateSet {
+    id: number;
+    goal_weight: number;
+    goal_reps: number;
+}
+
+export interface TemplateExercise {
+    id: number;
+    exercise: Exercise;
+    order: number;
+    sets: TemplateSet[];
+}
+
+export interface WorkoutTemplate {
+    id: number;
+    name: string;
+    created_at: string;
+    updated_at: string;
+    exercises: TemplateExercise[];
+}
+
+export interface CreateWorkoutTemplate {
+    name: string;
+    exercises: {
+        exercise_id: number;
+        sets: { goal_weight: number; goal_reps: number }[];
     }[];
 }

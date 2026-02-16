@@ -17,6 +17,7 @@ class User(UserBase, table=True):
     sessions: List["TrainingSession"] = Relationship(back_populates="user")
     garmin_credentials: Optional["GarminCredentials"] = Relationship(back_populates="user")
     heart_rate_logs: List["HeartRateLog"] = Relationship(back_populates="user")
+    workout_templates: List["WorkoutTemplate"] = Relationship(back_populates="user")
 
 class GarminCredentials(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -83,12 +84,45 @@ class TrainingSetBase(SQLModel):
     reps: int
     completed: bool = False
     rest_seconds: int = 0
+    set_duration: int = 0
+    goal_weight: Optional[float] = None
+    goal_reps: Optional[int] = None
 
 class TrainingSet(TrainingSetBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     session_exercise_id: int = Field(foreign_key="sessionexercise.id")
     
     session_exercise: SessionExercise = Relationship(back_populates="sets")
+
+# --- Workout Template Models ---
+
+class WorkoutTemplate(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    name: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    user: User = Relationship(back_populates="workout_templates")
+    exercises: List["TemplateExercise"] = Relationship(back_populates="template", sa_relationship_kwargs={"cascade": "all, delete", "order_by": "TemplateExercise.order"})
+
+class TemplateExercise(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    template_id: int = Field(foreign_key="workouttemplate.id")
+    exercise_id: int = Field(foreign_key="exercise.id")
+    order: int = 0
+    
+    template: WorkoutTemplate = Relationship(back_populates="exercises")
+    exercise: Exercise = Relationship()
+    sets: List["TemplateSet"] = Relationship(back_populates="template_exercise", sa_relationship_kwargs={"cascade": "all, delete"})
+
+class TemplateSet(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    template_exercise_id: int = Field(foreign_key="templateexercise.id")
+    goal_weight: float = 0
+    goal_reps: int = 0
+    
+    template_exercise: TemplateExercise = Relationship(back_populates="sets")
 
 # --- Pydantic Schemas for API ---
 
@@ -132,4 +166,38 @@ class TrainingSessionCreate(TrainingSessionBase):
 
 class TrainingSessionRead(TrainingSessionBase):
     id: int
+    template_name: Optional[str] = None
     exercises: List[SessionExerciseRead]
+
+# --- Template Schemas ---
+
+class TemplateSetCreate(SQLModel):
+    goal_weight: float = 0
+    goal_reps: int = 0
+
+class TemplateSetRead(SQLModel):
+    id: int
+    goal_weight: float
+    goal_reps: int
+
+class TemplateExerciseCreate(SQLModel):
+    exercise_id: int
+    sets: List[TemplateSetCreate]
+
+class TemplateExerciseRead(SQLModel):
+    id: int
+    exercise: ExerciseRead
+    order: int
+    sets: List[TemplateSetRead]
+
+class WorkoutTemplateCreate(SQLModel):
+    name: str
+    exercises: List[TemplateExerciseCreate]
+
+class WorkoutTemplateRead(SQLModel):
+    id: int
+    name: str
+    created_at: datetime
+    updated_at: datetime
+    exercises: List[TemplateExerciseRead]
+

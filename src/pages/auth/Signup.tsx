@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
+import { Eye, EyeOff } from 'lucide-react';
 
 const Signup: React.FC = () => {
     const [email, setEmail] = useState('');
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
     const [age, setAge] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const { register, user } = useData();
@@ -44,7 +46,7 @@ const Signup: React.FC = () => {
         <div className="flex flex-col items-center justify-center h-full pt-10">
             <div className="card w-full max-w-md p-8 bg-surface border border-border">
                 <h1 className="text-2xl font-bold mb-2 text-center text-primary">Create Account</h1>
-                <p className="text-muted text-center mb-6">Start your fitness journey</p>
+                <p className="text-muted text-center mb-6">Start your AI-Coach journey</p>
 
                 {error && (
                     <div className="bg-red-500/10 border border-red-500/50 text-red-500 px-4 py-2 rounded mb-4 text-sm text-center">
@@ -81,15 +83,24 @@ const Signup: React.FC = () => {
 
                     <div className="flex flex-col gap-2">
                         <label htmlFor="password" className="text-sm font-medium">Password</label>
-                        <input
-                            type="password"
-                            id="password"
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            className="bg-bg border-border focus:border-primary"
-                        />
+                        <div className="relative">
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                id="password"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                className="bg-bg border-border focus:border-primary w-full pr-12"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text"
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </div>
                     </div>
 
                     <div className="flex flex-col gap-2">

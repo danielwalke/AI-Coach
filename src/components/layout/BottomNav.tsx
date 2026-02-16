@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, User, HeartPulse } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, User, HeartPulse, Dumbbell } from 'lucide-react';
 
 const BottomNav: React.FC = () => {
     return (
@@ -40,6 +40,17 @@ const BottomNav: React.FC = () => {
                 </NavLink>
 
                 <NavLink
+                    to="/templates"
+                    className={({ isActive }) =>
+                        `flex flex-col items-center justify-center w-16 h-full transition-all duration-300 ${isActive ? 'text-primary' : 'text-muted hover:text-text'
+                        }`
+                    }
+                >
+                    <Dumbbell size={22} strokeWidth={2} />
+                    <span className="text-[10px] font-medium mt-1">Templates</span>
+                </NavLink>
+
+                <NavLink
                     to="/profile"
                     className={({ isActive }) =>
                         `flex flex-col items-center justify-center w-16 h-full transition-all duration-300 ${isActive ? 'text-primary' : 'text-muted hover:text-text'
@@ -55,3 +66,4 @@ const BottomNav: React.FC = () => {
 };
 
 export default BottomNav;
+
