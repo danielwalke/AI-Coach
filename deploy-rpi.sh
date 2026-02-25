@@ -8,12 +8,13 @@ set -e
 
 # Save original stdout to fd 3
 exec 3>&1
-# Redirect all output and errors to deploy.log
-LOG_FILE="deploy.log"
-exec > "$LOG_FILE" 2>&1
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
+
+# Redirect all output and errors to deploy.log in the script directory
+LOG_FILE="deploy.log"
+exec > "$LOG_FILE" 2>&1
 
 echo "=== AI Coach - Raspberry Pi ARM Deployment ==="
 echo ""
@@ -21,28 +22,28 @@ echo ""
 # --- Prerequisites Check ---
 echo "[1/5] Checking prerequisites..."
 
-if ! command -v docker &> /dev/null; then
-    echo "ERROR: Docker is not installed."
+if ! docker --version > /dev/null 2>&1; then
+    echo "ERROR: Docker is not installed or not in PATH."
     echo "Install with: curl -fsSL https://get.docker.com | sh"
     echo "Then: sudo usermod -aG docker \$USER && newgrp docker"
     exit 1
 fi
 
-if ! command -v docker compose &> /dev/null; then
+if ! docker compose version > /dev/null 2>&1; then
     echo "ERROR: Docker Compose is not installed."
     echo "Install with: sudo apt install docker-compose-plugin"
     exit 1
 fi
 
 # Check if Ollama is installed
-if ! command -v ollama &> /dev/null; then
+if ! command -v ollama > /dev/null 2>&1; then
     echo "WARNING: Ollama is not installed. The AI Coach chat will not work."
     echo "Install with: curl -fsSL https://ollama.com/install.sh | sh"
     echo "Continuing without Ollama..."
 else
     echo "  Ollama found."
     # Ensure Ollama is running
-    if ! curl -s http://localhost:11434/api/tags &> /dev/null; then
+    if ! curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
         echo "  Starting Ollama..."
         ollama serve &
         sleep 3
@@ -62,7 +63,7 @@ export OLLAMA_MODEL=qwen3:1.7b
 # --- Stop existing containers ---
 echo ""
 echo "[2/5] Stopping existing containers (if any)..."
-docker compose down 2>/dev/null || true
+docker compose down > /dev/null 2>&1 || true
 
 # --- Build from scratch (ARM native) ---
 echo ""
@@ -83,7 +84,7 @@ echo "  Backend:  http://localhost:9061"
 echo ""
 echo "[5/5] Setting up ngrok tunnel..."
 
-if ! command -v ngrok &> /dev/null; then
+if ! command -v ngrok > /dev/null 2>&1; then
     echo "WARNING: ngrok is not installed."
     echo "Install with:"
     echo "  curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok-v3-stable-linux-arm64.tgz | sudo tar xzf - -C /usr/local/bin"
