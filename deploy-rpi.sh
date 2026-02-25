@@ -108,15 +108,24 @@ else
     echo "Starting ngrok tunnel on port 9060 in background..."
     echo "Starting ngrok tunnel on port 9060 in background..." >&3
     nohup ngrok http 9060 > /dev/null 2>&1 &
+    echo "Waiting for ngrok to initialize..."
+    echo "Waiting for ngrok to initialize..." >&3
     
-    # Wait for ngrok to initialize
-    sleep 5
-    
-    # Fetch the public URL from ngrok's local API
-    NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | grep -o '"public_url":"[^"]*"' | cut -d'"' -f4 | head -n 1)
+    # Retry loop to fetch the public URL
+    NGROK_URL=""
+    for i in {1..10}; do
+        sleep 3
+        NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | grep -o '"public_url":"[^"]*"' | cut -d'"' -f4 | head -n 1 || true)
+        if [ -n "$NGROK_URL" ]; then
+            break
+        fi
+        echo "Still waiting ($i/10)..." >&3
+    done
     
     if [ -n "$NGROK_URL" ]; then
         echo "Ngrok tunnel established successfully."
+        echo "Ngrok tunnel established successfully." >&3
+        echo "Backend URL: $NGROK_URL"
         echo "$NGROK_URL" >&3
     else
         echo "Failed to get ngrok URL. You may need to check the deploy.log for details."
