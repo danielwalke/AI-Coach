@@ -323,13 +323,13 @@ async def stream_web_llm(messages: list, system_prompt: str, user_id: int = 1):
             "X-Title": "Antigravity Fitness", # Optional. Shows in rankings on openrouter.ai.
         }
     else:
-        # Fallback to local Ollama if no key
-        model_name = os.environ.get("OLLAMA_MODEL", "qwen2.5:1.5b") # Default local model
-        # ... (rest of logic handles local url) ...
-        
-        # NOTE: Local LLM logic in this function is legacy/fallback for now. 
-        # Ideally we'd use a unified interface. For now, we focus on OpenRouter.
-        pass
+        # Fallback when no OpenRouter key is provided
+        model_name = "pollinations/openai"
+        logger.info("[Fallback] No OpenRouter key found. Using Pollinations free API.")
+        url = "https://text.pollinations.ai/openai/chat/completions"
+        headers = {
+            "Content-Type": "application/json",
+        }
 
     async with httpx.AsyncClient() as client:
         try:

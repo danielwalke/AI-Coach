@@ -106,7 +106,8 @@ else
     pkill ngrok || true
     
     echo "Starting ngrok tunnel on port 9060 in background..."
-    ngrok http 9060 > /dev/null 2>&1 &
+    echo "Starting ngrok tunnel on port 9060 in background..." >&3
+    nohup ngrok http 9060 > /dev/null 2>&1 &
     
     # Wait for ngrok to initialize
     sleep 5
