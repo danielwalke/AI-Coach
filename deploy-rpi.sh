@@ -104,8 +104,8 @@ pkill cloudflared || true
 echo "Starting Cloudflare Quick Tunnel on port 9060 in background..."
 echo "Starting Cloudflare Quick Tunnel on port 9060 in background..." >&3
 
-# cloudflared Quick Tunnels log everything to standard error
-nohup cloudflared tunnel --url http://localhost:9060 > cloudflared.log 2>&1 &
+# cloudflared Quick Tunnels log everything to standard error. Forcing http2 because QUIC often fails on RPi limits.
+nohup cloudflared tunnel --protocol http2 --url http://localhost:9060 > cloudflared.log 2>&1 &
 
 echo "Waiting for Cloudflare tunnel to initialize..."
 echo "Waiting for Cloudflare tunnel to initialize..." >&3
