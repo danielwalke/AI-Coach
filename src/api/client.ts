@@ -1,4 +1,11 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+let BASE_URL = import.meta.env.VITE_API_URL;
+if (!BASE_URL) {
+    if (import.meta.env.DEV) {
+        BASE_URL = 'http://127.0.0.1:8000';
+    } else {
+        BASE_URL = '/api'; // Nginx proxy routes this to backend:9061
+    }
+}
 
 export const apiClient = {
     async request(endpoint: string, options: RequestInit = {}) {

@@ -86,53 +86,19 @@ echo ""
 echo "  Frontend: http://localhost:9060"
 echo "  Backend:  http://localhost:9061"
 
-# --- Cloudflare Tunnel (cloudflared) ---
+# --- Local Network Access (Recommended) ---
 echo ""
-echo "[5/5] Setting up Cloudflare tunnel (cloudflared)..."
-echo "[5/5] Setting up Cloudflare tunnel..." >&3
+echo "[5/5] Determining Local Network Access..."
+echo "[5/5] Determining Local Network Access..." >&3
 
-if ! command -v cloudflared > /dev/null 2>&1; then
-    echo "Installing cloudflared..."
-    curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64.deb
-    sudo dpkg -i cloudflared.deb
-    rm cloudflared.deb
-fi
+LOCAL_IP=$(hostname -I | awk '{print $1}')
 
-# Kill any existing cloudflared process
-pkill cloudflared || true
-
-echo "Starting Cloudflare Quick Tunnel on port 9060 in background..."
-echo "Starting Cloudflare Quick Tunnel on port 9060 in background..." >&3
-
-# cloudflared Quick Tunnels log everything to standard error. Forcing http2 because QUIC often fails on RPi limits.
-nohup cloudflared tunnel --protocol http2 --url http://localhost:9060 > cloudflared.log 2>&1 &
-
-echo "Waiting for Cloudflare tunnel to initialize..."
-echo "Waiting for Cloudflare tunnel to initialize..." >&3
-
-# Retry loop to fetch the public URL from the logs
-CLOUDFLARE_URL=""
-for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
-    sleep 2
-    # The quick tunnel URL always ends in trycloudflare.com
-    CLOUDFLARE_URL=$(grep -o 'https://[-a-zA-Z0-9]*\.trycloudflare\.com' cloudflared.log | head -n 1)
-    if [ -n "$CLOUDFLARE_URL" ]; then
-        break
-    fi
-    echo "Still waiting ($i/15)..." >&3
-done
-
-if [ -n "$CLOUDFLARE_URL" ]; then
-    echo "Cloudflare tunnel established successfully."
-    echo "Cloudflare tunnel established successfully." >&3
-    echo "Backend URL: $CLOUDFLARE_URL"
-    echo "Your AI Coach is publicly accessible at:" >&3
-    echo "$CLOUDFLARE_URL" >&3
-    
-    # Save the URL for reference
-    echo "$CLOUDFLARE_URL" > current_tunnel_url.txt
-else
-    echo "Failed to get Cloudflare URL. You may need to check cloudflared.log for details."
-    echo "Failed to get Cloudflare URL. Check cloudflared.log on the device." >&3
-    cat cloudflared.log | tail -n 10 >&3
-fi
+echo ""
+echo "=== Deployment complete ==="
+echo "=== Deployment complete ===" >&3
+echo "" >&3
+echo "Your AI Coach is running natively on your local network!" >&3
+echo "You can access it from your phone/tablet by visiting:" >&3
+echo "  👉 http://$LOCAL_IP:9060" >&3
+echo "" >&3
+echo "(Make sure your device is connected to the same Wi-Fi)" >&3
