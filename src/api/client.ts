@@ -58,3 +58,16 @@ export const apiClient = {
         return this.request(endpoint, { method: 'DELETE' });
     }
 };
+
+// Start a heartbeat to keep ngrok tunnels alive during long workouts
+// Pings the backend every 5 minutes
+setInterval(() => {
+    // We do a raw fetch to avoid throwing errors and triggering redirect logic
+    fetch(`${BASE_URL}/exercises/`, {
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('fitness_auth_token') || ''}`
+        }
+    }).catch(() => {
+        // Ignore network errors in the heartbeat
+    });
+}, 5 * 60 * 1000);

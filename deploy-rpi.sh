@@ -86,19 +86,53 @@ echo ""
 echo "  Frontend: http://localhost:9060"
 echo "  Backend:  http://localhost:9061"
 
-# --- Local Network Access (Recommended) ---
+# --- Ngrok tunnel ---
 echo ""
-echo "[5/5] Determining Local Network Access..."
-echo "[5/5] Determining Local Network Access..." >&3
+echo "[5/5] Setting up ngrok tunnel..."
+echo "[5/5] Setting up ngrok tunnel..." >&3
 
-LOCAL_IP=$(hostname -I | awk '{print $1}')
-
-echo ""
-echo "=== Deployment complete ==="
-echo "=== Deployment complete ===" >&3
-echo "" >&3
-echo "Your AI Coach is running natively on your local network!" >&3
-echo "You can access it from your phone/tablet by visiting:" >&3
-echo "  👉 http://$LOCAL_IP:9060" >&3
-echo "" >&3
-echo "(Make sure your device is connected to the same Wi-Fi)" >&3
+if ! command -v ngrok > /dev/null 2>&1; then
+    echo "WARNING: ngrok is not installed."
+    echo "Install with:"
+    echo "  curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok-v3-stable-linux-arm64.tgz | sudo tar xzf - -C /usr/local/bin"
+    echo "  ngrok config add-authtoken YOUR_TOKEN"
+    echo ""
+    echo "After installing, run: ngrok http 9060"
+    echo ""
+    echo "=== Deployment complete (without ngrok) ==="
+    echo "Deployment complete (without ngrok)" >&3
+else
+    # Kill any existing ngrok process
+    pkill ngrok || true
+    
+    echo "Starting ngrok tunnel on port 9060 in background..."
+    echo "Starting ngrok tunnel on port 9060 in background..." >&3
+    nohup ngrok http 9060 > /dev/null 2>&1 &
+    echo "Waiting for ngrok to initialize..."
+    echo "Waiting for ngrok to initialize..." >&3
+    
+    # Retry loop to fetch the public URL
+    NGROK_URL=""
+    for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+        sleep 3
+        NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | grep -o '"public_url":"[^"]*"' | cut -d'"' -f4 | head -n 1 || true)
+        if [ -n "$NGROK_URL" ]; then
+            break
+        fi
+        echo "Still waiting ($i/15)..." >&3
+    done
+    
+    if [ -n "$NGROK_URL" ]; then
+        echo "Ngrok tunnel established successfully."
+        echo "Ngrok tunnel established successfully." >&3
+        echo "Backend URL: $NGROK_URL"
+        echo "Your AI Coach is publicly accessible at:" >&3
+        echo "$NGROK_URL" >&3
+        
+        # Save the URL for reference
+        echo "$NGROK_URL" > current_tunnel_url.txt
+    else
+        echo "Failed to get ngrok URL. You may need to check the deploy.log for details."
+        echo "Failed to get ngrok URL." >&3
+    fi
+fi
