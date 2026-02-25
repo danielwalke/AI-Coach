@@ -10,6 +10,7 @@ import ActiveSession from './pages/training/ActiveSession';
 import TemplateManager from './pages/training/TemplateManager';
 import Profile from './pages/Profile';
 import HealthCoach from './pages/health-coach/HealthCoach';
+import WorkoutHistory from './pages/history/WorkoutHistory';
 
 // Protected Route Wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -71,6 +72,14 @@ const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute>
               <TemplateManager />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="history"
+          element={
+            <ProtectedRoute>
+              <WorkoutHistory />
             </ProtectedRoute>
           }
         />

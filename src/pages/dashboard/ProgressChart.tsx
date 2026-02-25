@@ -1,15 +1,26 @@
 import React, { useMemo, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Activity } from 'lucide-react';
+import { Activity, Trophy } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 
 const ProgressChart: React.FC = () => {
     const { sessions, exercises } = useData();
     const [selectedExerciseId, setSelectedExerciseId] = useState<number | ''>('');
 
-    // Default to first exercise if none selected
-    const activeExerciseId = selectedExerciseId === '' && exercises.length > 0 ? exercises[0].id : selectedExerciseId;
+    // Filter exercises to only those the user has done at least once (with completed sets)
+    const completedExercises = useMemo(() => {
+        const doneIds = new Set<number>();
+        sessions.forEach(session => {
+            session.exercises.forEach(ex => {
+                const hasCompleted = ex.sets.some(s => s.completed && s.weight > 0);
+                if (hasCompleted) doneIds.add(ex.exercise.id);
+            });
+        });
+        return exercises.filter(e => doneIds.has(e.id));
+    }, [sessions, exercises]);
 
+    // Default to first completed exercise if none selected
+    const activeExerciseId = selectedExerciseId === '' && completedExercises.length > 0 ? completedExercises[0].id : selectedExerciseId;
 
     const data = useMemo(() => {
         if (activeExerciseId === '') return [];
@@ -37,12 +48,21 @@ const ProgressChart: React.FC = () => {
         }).filter(Boolean);
     }, [sessions, activeExerciseId]);
 
-    // Debug logging
-    console.log('ProgressChart sessions:', sessions.length);
-    console.log('Active Exercise:', activeExerciseId);
-    console.log('Chart Data:', data);
+    // Calculate PR (personal record) for the selected exercise
+    const pr = useMemo(() => {
+        if (data.length === 0) return null;
+        return Math.max(...data.map((d: any) => d.weight));
+    }, [data]);
 
-    if (exercises.length === 0) return <div className="p-4 text-center text-muted">No exercises found.</div>;
+    if (completedExercises.length === 0) {
+        return (
+            <div className="p-8 text-center text-muted flex flex-col items-center gap-2">
+                <Activity className="opacity-30" size={32} />
+                <p className="font-medium">No exercise data yet.</p>
+                <p className="text-xs">Complete a workout to see your progress here.</p>
+            </div>
+        );
+    }
 
     return (
         <div className="card w-full flex flex-col bg-surface border-none shadow-none p-0">
@@ -52,10 +72,16 @@ const ProgressChart: React.FC = () => {
                     value={activeExerciseId}
                     onChange={(e) => setSelectedExerciseId(Number(e.target.value))}
                 >
-                    {exercises.map(ex => (
+                    {completedExercises.map(ex => (
                         <option key={ex.id} value={ex.id}>{ex.name}</option>
                     ))}
                 </select>
+                {pr !== null && (
+                    <div className="flex items-center gap-1.5 text-sm font-bold text-yellow-500 bg-yellow-500/10 px-3 py-1.5 rounded-full border border-yellow-500/20">
+                        <Trophy size={14} />
+                        <span>PR: {pr} kg</span>
+                    </div>
+                )}
             </div>
 
             <div className="w-full h-[300px]" data-testid="chart-container">
@@ -95,16 +121,15 @@ const ProgressChart: React.FC = () => {
                                 strokeWidth={3}
                                 dot={{ fill: '#0a84ff', r: 4, strokeWidth: 2, stroke: '#1c1c1e' }}
                                 activeDot={{ r: 6, strokeWidth: 0 }}
-                                isAnimationActive={false} // Disable animation for easier E2E testing
+                                isAnimationActive={false}
                             />
                         </LineChart>
                     </ResponsiveContainer>
                 ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-muted text-sm px-8 text-center bg-red-500/20 rounded-2xl mx-2">
+                    <div className="h-full flex flex-col items-center justify-center text-muted text-sm px-8 text-center rounded-2xl mx-2">
                         <Activity className="mb-2 opacity-50" />
-                        <p>No data yet.</p>
-                        <p className="text-xs mt-1">Complete a {exercises.find(e => e.id === Number(activeExerciseId))?.name} session to visualize progress.</p>
-                        <p className="text-xs mt-2 font-mono">DEBUG: Data count is 0</p>
+                        <p>No data yet for this exercise.</p>
+                        <p className="text-xs mt-1">Complete a session with {completedExercises.find(e => e.id === Number(activeExerciseId))?.name} to visualize progress.</p>
                     </div>
                 )}
             </div>
@@ -113,3 +138,4 @@ const ProgressChart: React.FC = () => {
 };
 
 export default ProgressChart;
+

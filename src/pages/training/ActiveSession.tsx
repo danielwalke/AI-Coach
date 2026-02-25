@@ -296,9 +296,9 @@ const ActiveSession: React.FC = () => {
                                                 onChange={e => updateSet(exerciseIndex, setIndex, 'weight', Number(e.target.value))}
                                                 placeholder={set.goalWeight ? String(set.goalWeight) : '0'}
                                             />
-                                            {set.goalWeight !== undefined && set.goalWeight > 0 && (
-                                                <div className="text-[10px] text-center text-muted mt-1 font-medium">goal: {set.goalWeight}</div>
-                                            )}
+                                            <div className="text-[10px] text-center text-muted mt-1 font-medium min-h-[16px]">
+                                                {set.goalWeight !== undefined && set.goalWeight > 0 ? `goal: ${set.goalWeight}` : '\u00A0'}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -312,9 +312,9 @@ const ActiveSession: React.FC = () => {
                                                 onChange={e => updateSet(exerciseIndex, setIndex, 'reps', Number(e.target.value))}
                                                 placeholder={set.goalReps ? String(set.goalReps) : '0'}
                                             />
-                                            {set.goalReps !== undefined && set.goalReps > 0 && (
-                                                <div className="text-[10px] text-center text-muted mt-1 font-medium">goal: {set.goalReps}</div>
-                                            )}
+                                            <div className="text-[10px] text-center text-muted mt-1 font-medium min-h-[16px]">
+                                                {set.goalReps !== undefined && set.goalReps > 0 ? `goal: ${set.goalReps}` : '\u00A0'}
+                                            </div>
                                         </div>
                                     </div>
 

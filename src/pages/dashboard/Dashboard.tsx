@@ -1,14 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useData } from '../../context/DataContext';
 import ProgressChart from './ProgressChart';
-import { X, ChevronRight, Trophy } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { TrainingSession } from '../../types/api';
 import GlassCard from '../../components/ui/GlassCard';
 
 const Dashboard: React.FC = () => {
-    const { user, sessions, streak, level, currentXP, nextLevelXP, totalXP, calculateSessionXP } = useData();
-    const [selectedSession, setSelectedSession] = useState<TrainingSession | null>(null);
+    const { user, streak, level, currentXP, nextLevelXP, totalXP } = useData();
 
     // Stats Grid
     if (!user) return null;
@@ -21,7 +19,7 @@ const Dashboard: React.FC = () => {
     const betterThanPercent = user.xp_percentile || 0;
 
     return (
-        <div className="flex flex-col gap-6 pb-32 pt-8 px-2 max-w-2xl mx-auto">
+        <div className="flex flex-col gap-4 pb-4 pt-4 px-2 max-w-2xl mx-auto">
             <header className="flex justify-between items-center px-2">
                 <div>
                     <h1 className="text-3xl font-extrabold text-text tracking-tight">Summary</h1>
@@ -35,7 +33,7 @@ const Dashboard: React.FC = () => {
             </header>
 
             {/* Gamification Stats */}
-            <div className="grid grid-cols-2 gap-4 mb-2">
+            <div className="grid grid-cols-2 gap-4">
                 <div className="card text-center p-4 relative overflow-hidden bg-surface border border-border flex flex-col items-center justify-center shadow-sm">
                     <div className="text-3xl mb-1 animate-bounce">🔥</div>
                     <div className="font-black text-2xl text-text">{streak}</div>
@@ -48,7 +46,7 @@ const Dashboard: React.FC = () => {
                 </div>
             </div>
 
-            <div className="card p-4 bg-surface border border-border shadow-sm mb-6 relative overflow-hidden">
+            <div className="card p-4 bg-surface border border-border shadow-sm relative overflow-hidden">
                 <div className="flex justify-between items-end mb-2 relative z-10">
                     <div>
                         <div className="text-[10px] text-muted uppercase font-bold tracking-wider mb-1">Total XP</div>
@@ -66,7 +64,7 @@ const Dashboard: React.FC = () => {
             </div>
 
             {/* Motivation Banner */}
-            <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-2xl p-4 shadow-lg shadow-indigo-500/20 mb-6 relative overflow-hidden group">
+            <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-2xl p-4 shadow-lg shadow-indigo-500/20 relative overflow-hidden group">
                 <div className="absolute -right-4 -top-4 opacity-10 transform group-hover:scale-110 transition-transform duration-700 rotate-12">
                     <Trophy size={120} />
                 </div>
@@ -89,113 +87,13 @@ const Dashboard: React.FC = () => {
                 <div className="px-2 mb-3">
                     <h2 className="text-xl font-bold text-text tracking-tight">Progress</h2>
                 </div>
-                <GlassCard className="p-6">
+                <GlassCard className="p-4">
                     <ProgressChart />
                 </GlassCard>
             </section>
-
-            <section>
-                <div className="flex items-center justify-between px-2 mb-3">
-                    <h2 className="text-xl font-bold text-text tracking-tight">Recent Workouts</h2>
-                    <Link to="/training" className="text-primary text-sm font-semibold hover:opacity-80 transition-opacity">Start New</Link>
-                </div>
-
-                {sessions.length === 0 ? (
-                    <div className="py-12 flex flex-col items-center justify-center text-center border-dashed border-2 border-border rounded-2xl bg-surface/50">
-                        <p className="text-muted mb-4 font-medium">No workouts yet</p>
-                        <Link to="/training" className="btn btn-primary shadow-lg shadow-primary/30">Start your first session</Link>
-                    </div>
-                ) : (
-                    <div className="flex flex-col gap-3 max-h-[500px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-surface-highlight scrollbar-track-transparent">
-                        {[...sessions].reverse().map(session => (
-                            <GlassCard
-                                key={session.id}
-                                className="p-5 flex justify-between items-center group active:scale-[0.99] shrink-0"
-                                onClick={() => setSelectedSession(session)}
-                            >
-                                <div className="flex flex-col gap-1">
-                                    <div className="flex items-center gap-2">
-                                        <div className="font-bold text-text text-lg">{new Date(session.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-                                        <span className="text-[10px] font-bold bg-yellow-500/10 text-yellow-600 px-1.5 py-0.5 rounded border border-yellow-500/20">+{calculateSessionXP(session)} XP</span>
-                                    </div>
-                                    <div className="text-xs text-muted font-medium uppercase tracking-wide">{session.exercises.length} Exercises • {Math.floor(session.duration_seconds / 60)} min</div>
-                                </div>
-                                <div className="p-2 rounded-full bg-surface-highlight text-muted group-hover:text-primary transition-colors">
-                                    <ChevronRight size={18} />
-                                </div>
-                            </GlassCard>
-                        ))}
-                    </div>
-                )}
-            </section>
-
-            {/* Details Modal */}
-            {selectedSession && (
-                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-surface w-full max-w-lg max-h-[85vh] rounded-3xl flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in duration-300 ring-1 ring-black/5">
-                        <div className="p-5 border-b border-border flex justify-between items-center bg-surface sticky top-0 z-10">
-                            <div>
-                                <h2 className="text-xl font-bold text-text">Workout Details</h2>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <p className="text-xs text-muted font-medium uppercase tracking-wide">{new Date(selectedSession.date).toLocaleString()}</p>
-                                    <span className="text-muted">•</span>
-                                    <p className="text-xs text-primary font-bold uppercase tracking-wide">
-                                        ⏱️ {Math.floor(selectedSession.duration_seconds / 60)}m {selectedSession.duration_seconds % 60}s
-                                    </p>
-                                </div>
-                            </div>
-                            <button onClick={() => setSelectedSession(null)} className="p-2 bg-surface-highlight rounded-full hover:bg-border transition-colors text-text">
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        <div className="p-5 overflow-y-auto flex flex-col gap-4 bg-bg/50">
-                            {selectedSession.exercises.map((ex, i) => (
-                                <div key={i} className="bg-surface p-5 rounded-2xl shadow-sm border border-border">
-                                    <h3 className="font-bold text-primary mb-3 text-lg flex items-center gap-2">
-                                        <div className="w-1.5 h-6 rounded-full bg-primary/20"></div>
-                                        {/* Use exercise name directly from nested object */}
-                                        {ex.exercise.name}
-                                    </h3>
-                                    <div className="flex flex-col gap-0">
-                                        {ex.sets.map((set, j) => (
-                                            <React.Fragment key={j}>
-                                                {/* Rest time before this set (if applicable and strictly > 0) */}
-                                                {set.rest_seconds !== undefined && set.rest_seconds > 0 && (
-                                                    <div className="flex justify-center -my-2 relative z-10">
-                                                        <span className="bg-surface px-2 text-[10px] font-bold text-orange-500 border border-orange-500/30 rounded-full py-0.5 flex items-center gap-1 shadow-sm">
-                                                            <span>🛑</span>
-                                                            Rest: {Math.floor(set.rest_seconds / 60)}:{String(set.rest_seconds % 60).padStart(2, '0')}
-                                                        </span>
-                                                    </div>
-                                                )}
-
-                                                <div className="flex justify-between items-center text-sm border border-border p-3 rounded-xl bg-surface mb-2 relative z-0">
-                                                    <div className="flex items-center gap-4">
-                                                        <span className="w-6 h-6 rounded-full bg-surface-highlight flex items-center justify-center text-xs font-bold text-muted">{j + 1}</span>
-                                                        <span className={`font-medium ${set.completed ? 'text-text' : 'text-muted'}`}>{set.weight} kg <span className="text-muted mx-1">x</span> {set.reps}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {set.set_duration !== undefined && set.set_duration > 0 && (
-                                                            <span className="text-[10px] text-blue-500 font-mono bg-blue-500/10 px-2 py-0.5 rounded flex items-center gap-1" title="Set Duration">
-                                                                <span>⏱️</span>
-                                                                {Math.floor(set.set_duration / 60)}:{String(set.set_duration % 60).padStart(2, '0')}
-                                                            </span>
-                                                        )}
-                                                        {set.completed && <div className="text-primary text-[10px] font-bold bg-primary/10 px-2 py-1 rounded-full">DONE</div>}
-                                                    </div>
-                                                </div>
-                                            </React.Fragment>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
 
 export default Dashboard;
+
