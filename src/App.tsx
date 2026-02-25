@@ -11,6 +11,7 @@ import TemplateManager from './pages/training/TemplateManager';
 import Profile from './pages/Profile';
 import HealthCoach from './pages/health-coach/HealthCoach';
 import WorkoutHistory from './pages/history/WorkoutHistory';
+import Impressum from './pages/Impressum';
 
 // Protected Route Wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -91,6 +92,7 @@ const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        <Route path="impressum" element={<Impressum />} />
       </Route>
     </Routes>
   );

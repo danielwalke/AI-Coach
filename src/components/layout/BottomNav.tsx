@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, User, HeartPulse, Clock, Dumbbell } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, User, HeartPulse, Clock, Dumbbell, Gavel } from 'lucide-react';
 
 const BottomNav: React.FC = () => {
     return (
@@ -70,6 +70,17 @@ const BottomNav: React.FC = () => {
                 >
                     <User size={20} strokeWidth={2} />
                     <span className="text-[9px] font-medium mt-1">Profile</span>
+                </NavLink>
+
+                <NavLink
+                    to="/impressum"
+                    className={({ isActive }) =>
+                        `flex flex-col items-center justify-center w-12 h-full transition-all duration-300 ${isActive ? 'text-primary' : 'text-muted hover:text-text'
+                        }`
+                    }
+                >
+                    <Gavel size={20} strokeWidth={2} />
+                    <span className="text-[9px] font-medium mt-1">Impressum</span>
                 </NavLink>
             </div>
         </nav>
