@@ -57,8 +57,24 @@ const FALLBACK_QUOTES = [
 const WorkoutContext = createContext<WorkoutContextType | undefined>(undefined);
 
 export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { addSession, user } = useData();
+    const { addSession, user, sessions } = useData();
     const navigate = useNavigate();
+
+    const getLastWeight = (exerciseId: number): number => {
+        if (!sessions || sessions.length === 0) return 0;
+        const sortedSessions = [...sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        for (const session of sortedSessions) {
+            const exItem = session.exercises.find(e => e.exercise.id === exerciseId);
+            if (exItem && exItem.sets.length > 0) {
+                const completed = exItem.sets.filter(s => s.completed);
+                if (completed.length > 0) {
+                    return Math.max(...completed.map(s => s.weight));
+                }
+                return exItem.sets[0].weight;
+            }
+        }
+        return 0;
+    };
 
     // Session State
     const [isActive, setIsActive] = useState(false);
@@ -77,20 +93,34 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Workout Timer
     useEffect(() => {
         let interval: number;
+        let lastTick = Date.now();
         if (isActive) {
             interval = window.setInterval(() => {
-                setElapsedTime(prev => prev + 1);
+                const now = Date.now();
+                const delta = Math.floor((now - lastTick) / 1000);
+                if (delta > 0) {
+                    setElapsedTime(prev => prev + delta);
+                    lastTick += delta * 1000;
+                }
             }, 1000);
         }
         return () => clearInterval(interval);
     }, [isActive]);
 
     // Mode Timer
+    const modeStartRef = useRef<number>(Date.now());
+
     useEffect(() => {
         let interval: number;
+        let lastTick = Date.now();
         if (isActive) {
             interval = window.setInterval(() => {
-                setModeTimer(prev => prev + 1);
+                const now = Date.now();
+                const delta = Math.floor((now - lastTick) / 1000);
+                if (delta > 0) {
+                    setModeTimer(prev => prev + delta);
+                    lastTick += delta * 1000;
+                }
             }, 1000);
         }
         return () => clearInterval(interval);
@@ -120,9 +150,14 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     const toggleTimerMode = () => {
-        const elapsed = modeTimerRef.current;
+        const now = Date.now();
+        const elapsed = Math.floor((now - modeStartRef.current) / 1000);
+        modeStartRef.current = now;
+
+        console.log(`[REST-DEBUG] toggleTimerMode: ${timerMode} -> ${timerMode === 'set' ? 'rest' : 'set'}, elapsed=${elapsed}s, currentSetRef=`, currentSetRef);
 
         if (timerMode === 'set') {
+            // SET -> REST: Mark current set as done with duration
             if (currentSetRef) {
                 setSessionExercises(prev => prev.map((ex, i) => {
                     if (i !== currentSetRef.ex) return ex;
@@ -130,6 +165,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
                         ...ex,
                         sets: ex.sets.map((s, j) => {
                             if (j === currentSetRef.set) {
+                                console.log(`[REST-DEBUG] Completing set ${j} of exercise ${i}: setDuration=${(s.setDuration || 0) + elapsed}`);
                                 return { ...s, setDuration: (s.setDuration || 0) + elapsed, completed: true };
                             }
                             return s;
@@ -139,39 +175,75 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
             }
             setTimerMode('rest');
         } else {
-            let found = false;
+            // REST -> SET: Record rest time and prepare for next set
+            console.log(`[REST-DEBUG] REST->SET: elapsed rest = ${elapsed}s`);
+
+            // Pre-compute where the next set will be (using current state snapshot)
+            const snapshot = sessionExercises;
+            let nextExIndex = -1;
+            let nextSetIndex = -1;
+            let willCreateNewSet = false;
+
+            // Look for the first incomplete set without rest attached
+            for (let i = 0; i < snapshot.length && nextExIndex === -1; i++) {
+                for (let j = 0; j < snapshot[i].sets.length; j++) {
+                    const s = snapshot[i].sets[j];
+                    if (!s.completed && s.restSeconds === undefined) {
+                        nextExIndex = i;
+                        nextSetIndex = j;
+                        break;
+                    }
+                }
+            }
+
+            if (nextExIndex === -1 && currentSetRef) {
+                // No existing incomplete set -> will create new set
+                nextExIndex = currentSetRef.ex;
+                nextSetIndex = snapshot[currentSetRef.ex].sets.length; // new set will be added at the end
+                willCreateNewSet = true;
+            }
+
+            console.log(`[REST-DEBUG] Next set target: ex=${nextExIndex}, set=${nextSetIndex}, willCreate=${willCreateNewSet}`);
+
+            // Now update the state
             setSessionExercises(prev => {
-                const updated = prev.map((ex, i) => {
-                    if (found) return ex;
-                    return {
-                        ...ex,
-                        sets: ex.sets.map((s, j) => {
-                            if (found) return s;
-                            if (!s.completed && s.restSeconds === undefined) {
-                                found = true;
-                                setCurrentSetRef({ ex: i, set: j });
-                                return { ...s, restSeconds: elapsed };
-                            }
-                            return s;
-                        })
-                    };
-                });
-                if (!found && currentSetRef) {
-                    return updated.map((ex, i) => {
-                        if (i !== currentSetRef.ex) return ex;
+                if (!willCreateNewSet) {
+                    // Attach rest to existing incomplete set
+                    return prev.map((ex, i) => {
+                        if (i !== nextExIndex) return ex;
                         return {
                             ...ex,
                             sets: ex.sets.map((s, j) => {
-                                if (j === currentSetRef.set) {
-                                    return { ...s, restSeconds: (s.restSeconds || 0) + elapsed };
+                                if (j === nextSetIndex) {
+                                    console.log(`[REST-DEBUG] Attaching rest=${elapsed}s to existing set ${j} of exercise ${i}`);
+                                    return { ...s, restSeconds: elapsed };
                                 }
                                 return s;
                             })
                         };
                     });
+                } else {
+                    // Create new set with rest
+                    return prev.map((ex, i) => {
+                        if (i !== nextExIndex) return ex;
+                        const previousSet = ex.sets[ex.sets.length - 1];
+                        const newSet: LocalTrainingSet = {
+                            id: uuidv4(),
+                            weight: previousSet ? previousSet.weight : 0,
+                            reps: previousSet ? previousSet.reps : 0,
+                            completed: false,
+                            goalWeight: previousSet?.goalWeight,
+                            goalReps: previousSet?.goalReps,
+                            restSeconds: elapsed,
+                        };
+                        console.log(`[REST-DEBUG] Creating new set with rest=${elapsed}s for exercise ${i}`);
+                        return { ...ex, sets: [...ex.sets, newSet] };
+                    });
                 }
-                return updated;
             });
+
+            // Update currentSetRef to the target set (outside of the updater, using pre-computed indices)
+            setCurrentSetRef({ ex: nextExIndex, set: nextSetIndex });
             setTimerMode('set');
         }
 
@@ -196,17 +268,20 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setModeTimer(0);
         setTemplateName(template.name);
 
-        const exercises: LocalSessionExercise[] = template.exercises.map(tex => ({
-            exerciseId: tex.exercise.id,
-            sets: tex.sets.map(s => ({
-                id: uuidv4(),
-                weight: s.goal_weight,
-                reps: s.goal_reps,
-                completed: false,
-                goalWeight: s.goal_weight,
-                goalReps: s.goal_reps,
-            }))
-        }));
+        const exercises: LocalSessionExercise[] = template.exercises.map(tex => {
+            const lastW = getLastWeight(tex.exercise.id);
+            return {
+                exerciseId: tex.exercise.id,
+                sets: tex.sets.map(s => ({
+                    id: uuidv4(),
+                    weight: s.goal_weight > 0 ? s.goal_weight : lastW,
+                    reps: s.goal_reps,
+                    completed: false,
+                    goalWeight: s.goal_weight,
+                    goalReps: s.goal_reps,
+                }))
+            };
+        });
         setSessionExercises(exercises);
         if (exercises.length > 0 && exercises[0].sets.length > 0) {
             setCurrentSetRef({ ex: 0, set: 0 });
@@ -229,9 +304,13 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const finishSession = async () => {
         if (!user) return;
+        setIsActive(false);
+
+        const now = Date.now();
+        const elapsedSinceModeStart = Math.floor((now - modeStartRef.current) / 1000);
 
         if (timerMode === 'set' && currentSetRef) {
-            const finalSetDuration = modeTimer;
+            const finalSetDuration = elapsedSinceModeStart;
             const apiExercises = sessionExercises.map((ex, i) => ({
                 exercise_id: ex.exerciseId,
                 sets: ex.sets.map((s, j) => ({
@@ -246,20 +325,36 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     goal_reps: s.goalReps,
                 }))
             }));
+            console.log("Submitting session (set)...", JSON.stringify(apiExercises, null, 2));
             await addSession({ date: new Date().toISOString(), duration_seconds: elapsedTime, exercises: apiExercises });
         } else {
-            const apiExercises = sessionExercises.map(ex => ({
+            // We are likely in REST mode or just idle. 
+            // If in rest mode, we should add the current rest timer to the current set's rest_seconds
+            const finalRestDuration = (timerMode === 'rest') ? elapsedSinceModeStart : 0;
+
+            const apiExercises = sessionExercises.map((ex, i) => ({
                 exercise_id: ex.exerciseId,
-                sets: ex.sets.map(s => ({
-                    weight: s.weight,
-                    reps: s.reps,
-                    completed: true,
-                    rest_seconds: s.restSeconds || 0,
-                    set_duration: s.setDuration || 0,
-                    goal_weight: s.goalWeight,
-                    goal_reps: s.goalReps,
-                }))
+                sets: ex.sets.map((s, j) => {
+                    // Start with accumulated rest
+                    let totalRest = s.restSeconds || 0;
+
+                    // If this is the current set we were resting for, add the pending rest time
+                    if (currentSetRef && i === currentSetRef.ex && j === currentSetRef.set && timerMode === 'rest') {
+                        totalRest += finalRestDuration;
+                    }
+
+                    return {
+                        weight: s.weight,
+                        reps: s.reps,
+                        completed: true,
+                        rest_seconds: totalRest,
+                        set_duration: s.setDuration || 0,
+                        goal_weight: s.goalWeight,
+                        goal_reps: s.goalReps,
+                    };
+                })
             }));
+            console.log("Submitting session...", JSON.stringify(apiExercises, null, 2));
             await addSession({ date: new Date().toISOString(), duration_seconds: elapsedTime, exercises: apiExercises });
         }
 
@@ -272,9 +367,10 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     const addExercise = (exerciseId: number) => {
+        const lastW = getLastWeight(exerciseId);
         const newSessionExercise: LocalSessionExercise = {
             exerciseId,
-            sets: [{ id: uuidv4(), weight: 0, reps: 0, completed: false }]
+            sets: [{ id: uuidv4(), weight: lastW, reps: 0, completed: false }]
         };
         setSessionExercises(prev => {
             const next = [...prev, newSessionExercise];
@@ -298,7 +394,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
             const previousSet = ex.sets[ex.sets.length - 1];
             const newSet: LocalTrainingSet = {
                 id: uuidv4(),
-                weight: previousSet ? previousSet.weight : 0,
+                weight: previousSet ? previousSet.weight : getLastWeight(ex.exerciseId),
                 reps: previousSet ? previousSet.reps : 0,
                 completed: false,
                 goalWeight: previousSet?.goalWeight,
@@ -309,18 +405,40 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     const updateSet = (exerciseIndex: number, setIndex: number, field: keyof LocalTrainingSet, value: string | number | boolean) => {
-        setSessionExercises(prev => prev.map((ex, i) => {
-            if (i !== exerciseIndex) return ex;
-            return {
+        if (timerMode === 'rest') {
+            const now = Date.now();
+            const elapsed = Math.floor((now - modeStartRef.current) / 1000);
+
+            // Check if they are interacting with an uncompleted set
+            const isUncompleted = !sessionExercises[exerciseIndex]?.sets[setIndex]?.completed;
+
+            if (isUncompleted) {
+                modeStartRef.current = now;
+                setTimerMode('set');
+                setModeTimer(0);
+                setCurrentSetRef({ ex: exerciseIndex, set: setIndex });
+
+                setSessionExercises(prev => prev.map((ex, i) => i === exerciseIndex ? {
+                    ...ex,
+                    sets: ex.sets.map((s, j) => j === setIndex ? {
+                        ...s,
+                        [field]: value,
+                        restSeconds: (s.restSeconds || 0) + elapsed
+                    } : s)
+                } : ex));
+            } else {
+                // Just update the completed set, don't change mode or currentSetRef
+                setSessionExercises(prev => prev.map((ex, i) => i === exerciseIndex ? {
+                    ...ex,
+                    sets: ex.sets.map((s, j) => j === setIndex ? { ...s, [field]: value } : s)
+                } : ex));
+            }
+        } else {
+            // mode is 'set'. Just update the value, do NOT change currentSetRef!
+            setSessionExercises(prev => prev.map((ex, i) => i === exerciseIndex ? {
                 ...ex,
-                sets: ex.sets.map((s, j) => {
-                    if (j === setIndex) return { ...s, [field]: value };
-                    return s;
-                })
-            };
-        }));
-        if (!currentSetRef || currentSetRef.ex !== exerciseIndex || currentSetRef.set !== setIndex) {
-            setCurrentSetRef({ ex: exerciseIndex, set: setIndex });
+                sets: ex.sets.map((s, j) => j === setIndex ? { ...s, [field]: value } : s)
+            } : ex));
         }
     };
 

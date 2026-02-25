@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DataProvider, useData } from './context/DataContext';
 import { WorkoutProvider } from './context/WorkoutContext';
 import Layout from './components/layout/Layout';
@@ -14,17 +14,16 @@ import HealthCoach from './pages/health-coach/HealthCoach';
 // Protected Route Wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useData();
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!isLoading && !user) {
-      navigate('/login');
-    }
-  }, [user, isLoading, navigate]);
+  if (isLoading) {
+    return <div className="flex h-screen items-center justify-center p-4">Loading...</div>;
+  }
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-bg text-muted">Loading...</div>;
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
-  return user ? <>{children}</> : null;
+  return <>{children}</>;
 };
 
 const AppRoutes: React.FC = () => {
@@ -61,6 +60,14 @@ const AppRoutes: React.FC = () => {
         />
         <Route
           path="templates"
+          element={
+            <ProtectedRoute>
+              <TemplateManager />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="templates/:id"
           element={
             <ProtectedRoute>
               <TemplateManager />

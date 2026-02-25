@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { apiClient } from '../api/client';
-import type { User, Exercise, TrainingSession, CreateTrainingSession, WorkoutTemplate, CreateWorkoutTemplate } from '../types/api';
+import type { User, Exercise, TrainingSession, CreateTrainingSession, WorkoutTemplate, CreateWorkoutTemplate, ChatMessage } from '../types/api';
 
 interface DataContextType {
     user: User | null;
@@ -31,8 +31,14 @@ interface DataContextType {
     level: number;
     currentXP: number;
     nextLevelXP: number;
-    totalXP: number; // New field
-    calculateSessionXP: (session: TrainingSession) => number; // New helper
+    totalXP: number;
+    calculateSessionXP: (session: TrainingSession) => number;
+
+    // Chat Persistence
+    chatMessages: ChatMessage[];
+    setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+    chatModelSource: 'web' | 'local';
+    setChatModelSource: React.Dispatch<React.SetStateAction<'web' | 'local'>>;
 }
 
 // XP Constants
@@ -59,7 +65,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isLoading, setIsLoading] = useState(true);
 
     const loadData = useCallback(async (showLoading = true) => {
-        if (!localStorage.getItem('fitness_auth_token')) return;
+        const token = localStorage.getItem('fitness_auth_token');
+        if (!token) {
+            setIsLoading(false);
+            return;
+        }
+
         if (showLoading) setIsLoading(true);
         try {
             const [paramsUser, paramsExercises, paramsSessions, paramsTemplates] = await Promise.all([
@@ -72,8 +83,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setExercises(paramsExercises);
             setSessions(paramsSessions);
             setTemplates(paramsTemplates);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to load data:", error);
+            // If unauthorized, clear token and redirect
+            if (error.status === 401 || (error.response && error.response.status === 401)) {
+                localStorage.removeItem('fitness_auth_token');
+                setUser(null);
+                // Optional: window.location.href = '/login'; 
+                // But setting user to null should trigger ProtectedRoute to redirect if implemented correctly
+            }
         } finally {
             if (showLoading) setIsLoading(false);
         }
@@ -101,9 +119,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const logout = () => {
         localStorage.removeItem('fitness_auth_token');
+        localStorage.removeItem('fitness_chat_messages');
         setUser(null);
         setSessions([]);
         setExercises([]);
+        setChatMessages([]);
         window.location.href = '/login';
     };
 
@@ -118,7 +138,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const deleteSession = async (id: number) => {
-        await apiClient.delete(`/ sessions / ${id} `);
+        await apiClient.delete(`/sessions/${id}`);
         loadData(false);
     };
 
@@ -128,7 +148,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const updateTemplate = async (id: number, template: CreateWorkoutTemplate) => {
-        await apiClient.request(`/ templates / ${id} `, {
+        await apiClient.request(`/templates/${id}`, {
             method: 'PUT',
             body: JSON.stringify(template),
         });
@@ -136,12 +156,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const deleteTemplate = async (id: number) => {
-        await apiClient.delete(`/ templates / ${id} `);
+        await apiClient.delete(`/templates/${id}`);
         loadData(false);
     };
 
     const exportTemplate = async (id: number): Promise<string> => {
-        const resp = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'} /templates/${id}/export`, {
+        const resp = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/templates/${id}/export`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('fitness_auth_token')}` }
         });
         return resp.text();
@@ -278,6 +298,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         calculateStats();
     }, [calculateStats]);
 
+    // Chat State — persisted in localStorage
+    const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
+        try {
+            const saved = localStorage.getItem('fitness_chat_messages');
+            return saved ? JSON.parse(saved) : [];
+        } catch { return []; }
+    });
+    const [chatModelSource, setChatModelSource] = useState<'web' | 'local'>('web');
+
+    // Persist chat messages whenever they change
+    useEffect(() => {
+        localStorage.setItem('fitness_chat_messages', JSON.stringify(chatMessages));
+    }, [chatMessages]);
+
     return (
         <DataContext.Provider
             value={{
@@ -305,6 +339,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 nextLevelXP,
                 totalXP,
                 calculateSessionXP,
+                chatMessages,
+                setChatMessages,
+                chatModelSource,
+                setChatModelSource,
             }}
         >
             {children}

@@ -15,7 +15,8 @@ export const apiClient = {
         });
 
         if (!response.ok) {
-            if (response.status === 401) {
+            // Only redirect on 401 if it's NOT a login request
+            if (response.status === 401 && !endpoint.includes('/auth/token')) {
                 // Determine if we should redirect to login or just throw
                 localStorage.removeItem('fitness_auth_token');
                 window.location.href = '/login';

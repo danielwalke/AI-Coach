@@ -48,6 +48,8 @@ class ExerciseBase(SQLModel):
     name: str
     category: str
     is_custom: bool = False
+    video_url: Optional[str] = None
+    instructions: Optional[str] = None
 
 class Exercise(ExerciseBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -102,6 +104,7 @@ class WorkoutTemplate(SQLModel, table=True):
     name: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+    is_ai_generated: bool = Field(default=False)
     
     user: User = Relationship(back_populates="workout_templates")
     exercises: List["TemplateExercise"] = Relationship(back_populates="template", sa_relationship_kwargs={"cascade": "all, delete", "order_by": "TemplateExercise.order"})
@@ -131,6 +134,7 @@ class UserCreate(UserBase):
 
 class UserRead(UserBase):
     id: int
+    xp_percentile: Optional[float] = 0.0
 
 class Token(SQLModel):
     access_token: str

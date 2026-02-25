@@ -9,3 +9,4 @@ httpx
 garminconnect
 langchain-ollama
 langchain-core
+fastmcp

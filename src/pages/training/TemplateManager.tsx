@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Download, Upload, Edit3, ChevronDown, ChevronRight, X, Save, Dumbbell } from 'lucide-react';
+import { Plus, Trash2, Download, Upload, Edit3, ChevronDown, ChevronRight, X, Save, Dumbbell, Sparkles, Check } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import type { WorkoutTemplate, CreateWorkoutTemplate } from '../../types/api';
 import ExerciseSelector from './ExerciseSelector';
@@ -139,6 +139,46 @@ const TemplateManager: React.FC = () => {
         }
     };
 
+    const handleDeleteAll = async () => {
+        if (templates.length === 0) return;
+        if (confirm('Are you sure you want to delete ALL templates? This cannot be undone.')) {
+            // Sequential delete to avoid overwhelming the server (and SQLite locks)
+            for (const t of templates) {
+                await deleteTemplate(t.id);
+            }
+        }
+    };
+
+    // --- Selection Logic ---
+    const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<number>>(new Set());
+
+    const toggleTemplateSelection = (id: number) => {
+        setSelectedTemplateIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const handleDeleteSelected = async () => {
+        if (selectedTemplateIds.size === 0) return;
+        if (confirm(`Delete ${selectedTemplateIds.size} selected templates?`)) {
+            for (const id of selectedTemplateIds) {
+                await deleteTemplate(id);
+            }
+            setSelectedTemplateIds(new Set());
+        }
+    };
+
+    const selectAll = () => {
+        if (selectedTemplateIds.size === templates.length) {
+            setSelectedTemplateIds(new Set());
+        } else {
+            setSelectedTemplateIds(new Set(templates.map(t => t.id)));
+        }
+    };
+
     // --- Editor UI ---
     if (isEditing) {
         return (
@@ -226,17 +266,46 @@ const TemplateManager: React.FC = () => {
     return (
         <div className="pb-20">
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-xl font-bold text-text flex items-center gap-2">
-                    <Dumbbell size={24} className="text-primary" style={{ color: 'var(--color-primary)' }} />
-                    Templates
-                </h1>
+                <div className="flex items-center gap-3">
+                    <h1 className="text-xl font-bold text-text flex items-center gap-2">
+                        <Dumbbell size={24} className="text-primary" style={{ color: 'var(--color-primary)' }} />
+                        Templates
+                    </h1>
+                    {templates.length > 0 && (
+                        <button
+                            onClick={selectAll}
+                            className="text-xs text-muted hover:text-text px-2 py-1 rounded hover:bg-surface-highlight transition-colors"
+                        >
+                            {selectedTemplateIds.size === templates.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                    )}
+                </div>
+
                 <div className="flex gap-2">
-                    <button onClick={() => setShowImportModal(true)} className="btn bg-surface text-muted border border-border flex items-center gap-1 text-sm" title="Import YAML">
-                        <Upload size={16} />
-                    </button>
-                    <button onClick={startCreate} className="btn btn-primary flex items-center gap-2">
-                        <Plus size={16} /> New
-                    </button>
+                    {selectedTemplateIds.size > 0 ? (
+                        <>
+                            <button onClick={() => setSelectedTemplateIds(new Set())} className="btn bg-surface text-muted border border-border text-xs">
+                                Cancel
+                            </button>
+                            <button onClick={handleDeleteSelected} className="btn bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 flex items-center gap-2">
+                                <Trash2 size={16} /> Delete ({selectedTemplateIds.size})
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            {templates.length > 0 && (
+                                <button onClick={handleDeleteAll} className="btn bg-surface text-muted border border-border flex items-center gap-1 text-sm hover:text-red-500 hover:border-red-500/30" title="Delete All">
+                                    <Trash2 size={16} />
+                                </button>
+                            )}
+                            <button onClick={() => setShowImportModal(true)} className="btn bg-surface text-muted border border-border flex items-center gap-1 text-sm" title="Import YAML">
+                                <Upload size={16} />
+                            </button>
+                            <button onClick={startCreate} className="btn btn-primary flex items-center gap-2">
+                                <Plus size={16} /> New
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -250,16 +319,36 @@ const TemplateManager: React.FC = () => {
 
             <div className="flex flex-col gap-3">
                 {templates.map(t => (
-                    <div key={t.id} className="card">
+                    <div key={t.id} className={`card transition-colors ${selectedTemplateIds.has(t.id) ? 'border-primary/50 bg-primary/5' : ''}`}>
                         <div className="flex justify-between items-center cursor-pointer"
                             onClick={() => setExpandedTemplate(expandedTemplate === t.id ? null : t.id)}>
-                            <div className="flex items-center gap-2">
-                                {expandedTemplate === t.id ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                                <div>
-                                    <h3 className="font-bold text-text">{t.name}</h3>
-                                    <p className="text-xs text-muted">{t.exercises.length} exercise{t.exercises.length !== 1 ? 's' : ''}</p>
+                            <div className="flex items-center gap-3">
+                                {/* Checkbox */}
+                                <div onClick={(e) => { e.stopPropagation(); toggleTemplateSelection(t.id); }}
+                                    className={`w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer ${selectedTemplateIds.has(t.id)
+                                        ? 'bg-primary border-primary text-white'
+                                        : 'border-muted hover:border-text bg-surface'
+                                        }`}>
+                                    {selectedTemplateIds.has(t.id) && <Check size={12} />}
+                                </div>
+
+                                {/* Content */}
+                                <div className="flex items-center gap-2">
+                                    {expandedTemplate === t.id ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                                    <div>
+                                        <h3 className="font-bold text-text flex items-center gap-2">
+                                            {t.name}
+                                            {t.is_ai_generated && (
+                                                <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded border border-purple-500/30 flex items-center gap-1">
+                                                    <Sparkles size={10} /> AI
+                                                </span>
+                                            )}
+                                        </h3>
+                                        <p className="text-xs text-muted">{t.exercises.length} exercise{t.exercises.length !== 1 ? 's' : ''}</p>
+                                    </div>
                                 </div>
                             </div>
+
                             <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                                 <button onClick={() => handleExport(t)} className="p-2 text-muted hover:text-primary rounded" title="Export YAML">
                                     <Download size={16} />
@@ -277,7 +366,16 @@ const TemplateManager: React.FC = () => {
                             <div className="mt-3 pt-3 border-t border-border">
                                 {t.exercises.map((ex, i) => (
                                     <div key={i} className="mb-2">
-                                        <div className="font-medium text-sm text-text">{ex.exercise.name}</div>
+                                        <div className="font-medium text-sm text-text flex items-center gap-2">
+                                            {ex.exercise.name}
+                                            {ex.exercise.video_url && (
+                                                <a href={ex.exercise.video_url} target="_blank" rel="noopener noreferrer"
+                                                    className="text-xs text-primary hover:underline flex items-center gap-0.5"
+                                                    onClick={e => e.stopPropagation()}>
+                                                    <span className="i-lucide-external-link w-3 h-3" /> Demo
+                                                </a>
+                                            )}
+                                        </div>
                                         <div className="text-xs text-muted ml-4">
                                             {ex.sets.map((s, j) => (
                                                 <span key={j}>{j > 0 ? ' · ' : ''}{s.goal_weight}kg × {s.goal_reps}</span>

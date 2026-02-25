@@ -37,6 +37,11 @@ const ProgressChart: React.FC = () => {
         }).filter(Boolean);
     }, [sessions, activeExerciseId]);
 
+    // Debug logging
+    console.log('ProgressChart sessions:', sessions.length);
+    console.log('Active Exercise:', activeExerciseId);
+    console.log('Chart Data:', data);
+
     if (exercises.length === 0) return <div className="p-4 text-center text-muted">No exercises found.</div>;
 
     return (
@@ -53,9 +58,9 @@ const ProgressChart: React.FC = () => {
                 </select>
             </div>
 
-            <div className="flex-1 w-full h-[300px]" data-testid="chart-container">
+            <div className="w-full h-[300px]" data-testid="chart-container">
                 {data.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height={300}>
                         <LineChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
@@ -95,10 +100,11 @@ const ProgressChart: React.FC = () => {
                         </LineChart>
                     </ResponsiveContainer>
                 ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-muted text-sm px-8 text-center bg-surface-highlight/30 rounded-2xl mx-2">
+                    <div className="h-full flex flex-col items-center justify-center text-muted text-sm px-8 text-center bg-red-500/20 rounded-2xl mx-2">
                         <Activity className="mb-2 opacity-50" />
                         <p>No data yet.</p>
                         <p className="text-xs mt-1">Complete a {exercises.find(e => e.id === Number(activeExerciseId))?.name} session to visualize progress.</p>
+                        <p className="text-xs mt-2 font-mono">DEBUG: Data count is 0</p>
                     </div>
                 )}
             </div>

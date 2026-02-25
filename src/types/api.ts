@@ -6,6 +6,7 @@ export interface User {
     name: string;
     age?: number;
     joined_at: string;
+    xp_percentile?: number;
 }
 
 export interface AccessToken {
@@ -19,6 +20,8 @@ export interface Exercise {
     category: string;
     is_custom: boolean;
     user_id?: number;
+    video_url?: string;
+    instructions?: string;
 }
 
 export interface TrainingSet {
@@ -78,6 +81,7 @@ export interface WorkoutTemplate {
     created_at: string;
     updated_at: string;
     exercises: TemplateExercise[];
+    is_ai_generated?: boolean;
 }
 
 export interface CreateWorkoutTemplate {
@@ -86,4 +90,13 @@ export interface CreateWorkoutTemplate {
         exercise_id: number;
         sets: { goal_weight: number; goal_reps: number }[];
     }[];
+}
+
+// --- Chat Types ---
+
+export interface ChatMessage {
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    thinking?: string;
 }

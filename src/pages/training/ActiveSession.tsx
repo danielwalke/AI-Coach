@@ -201,10 +201,10 @@ const ActiveSession: React.FC = () => {
                     </div>
 
                     {/* Main timer display */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between min-h-[60px]">
                         <div className="flex flex-col">
                             <span className="text-xs font-bold uppercase tracking-wide flex items-center" style={{ color: isSet ? 'var(--color-primary)' : '#f97316' }}>
-                                <span className="text-2xl mr-1">{isSet ? '💪' : '😮‍💨'}</span>
+                                <span className="text-2xl mr-1 w-8 text-center">{isSet ? '💪' : '😮‍💨'}</span>
                                 {isSet ? 'Set' : 'Rest'}
                             </span>
                             <span className="text-4xl font-black tabular-nums" style={{ color: isSet ? 'var(--color-primary)' : '#f97316' }}>
@@ -214,15 +214,15 @@ const ActiveSession: React.FC = () => {
 
                         {/* Toggle hint */}
                         <div className="flex flex-col items-center gap-1">
-                            <div
-                                className="px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95"
+                            <button
+                                className="w-32 py-2 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95 shadow-sm"
                                 style={{
                                     backgroundColor: isSet ? '#f97316' : 'var(--color-primary)',
                                     color: 'white',
                                 }}
                             >
                                 {isSet ? 'Start Rest →' : '← Start Set'}
-                            </div>
+                            </button>
                             <span className="text-[10px] text-muted">tap to switch</span>
                         </div>
                     </div>
@@ -234,7 +234,18 @@ const ActiveSession: React.FC = () => {
                 {sessionExercises.map((sessionExercise, exerciseIndex) => (
                     <div key={exerciseIndex} className="card">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-text">{getExerciseName(sessionExercise.exerciseId)}</h3>
+                            <div className="flex flex-col">
+                                <h3 className="text-lg font-bold text-text flex items-center gap-2">
+                                    {getExerciseName(sessionExercise.exerciseId)}
+                                </h3>
+                                {allExercises.find(e => e.id === sessionExercise.exerciseId)?.video_url && (
+                                    <a href={allExercises.find(e => e.id === sessionExercise.exerciseId)?.video_url}
+                                        target="_blank" rel="noopener noreferrer"
+                                        className="text-xs text-primary hover:underline flex items-center gap-1 mt-1">
+                                        <span className="i-lucide-external-link w-3 h-3" /> View Demo
+                                    </a>
+                                )}
+                            </div>
                             <button
                                 onClick={() => removeExercise(exerciseIndex)}
                                 className="text-muted hover:text-danger p-1"
@@ -243,72 +254,84 @@ const ActiveSession: React.FC = () => {
                             </button>
                         </div>
 
-                        <div className="flex flex-col gap-2">
+                        <div className="grid grid-cols-[1fr_2fr_2fr_5fr_1fr] gap-x-2 gap-y-3 items-center">
                             {/* Header */}
-                            <div className="grid grid-cols-12 gap-2 mb-1 text-xs text-muted uppercase font-bold text-center">
-                                <div className="col-span-1">#</div>
-                                <div className="col-span-3">kg</div>
-                                <div className="col-span-3">Reps</div>
-                                <div className="col-span-4">Time</div>
-                                <div className="col-span-1"></div>
-                            </div>
+                            <div className="text-xs text-muted uppercase font-bold text-center">#</div>
+                            <div className="text-xs text-muted uppercase font-bold text-center">KG</div>
+                            <div className="text-xs text-muted uppercase font-bold text-center">REPS</div>
+                            <div className="text-xs text-muted uppercase font-bold text-center">TIME</div>
+                            <div></div>
 
                             {sessionExercise.sets.map((set, setIndex) => (
-                                <div key={set.id} className={`grid grid-cols-12 gap-2 items-center ${set.completed ? 'opacity-60' : ''}`}>
+                                <React.Fragment key={set.id}>
+                                    {/* Explicit Rest Row (above the set it belongs to) */}
+                                    {set.restSeconds !== undefined && set.restSeconds > 0 && (
+                                        <div className="col-span-5 flex justify-center items-center py-1.5 my-1 relative">
+                                            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                                <div className="w-full border-t border-dashed border-gray-700"></div>
+                                            </div>
+                                            <div className="relative flex justify-center">
+                                                <span className="bg-surface px-2 text-xs font-bold text-orange-500 flex items-center gap-1 border border-orange-500/30 rounded-full py-0.5">
+                                                    <Clock size={10} /> Rest: {formatTime(set.restSeconds)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Set Details Row */}
                                     {/* Set number */}
-                                    <div className="col-span-1 flex items-center justify-center">
+                                    <div className={`flex items-center justify-center ${set.completed ? 'opacity-60' : ''}`}>
                                         <div className={`rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold ${set.completed ? 'bg-green-600 text-white' : 'bg-gray-800 text-white'}`}>
                                             {setIndex + 1}
                                         </div>
                                     </div>
 
                                     {/* Weight */}
-                                    <div className="col-span-3">
-                                        <input
-                                            type="number"
-                                            className="w-full text-center px-1"
-                                            value={set.weight || ''}
-                                            onChange={e => updateSet(exerciseIndex, setIndex, 'weight', Number(e.target.value))}
-                                            placeholder={set.goalWeight ? String(set.goalWeight) : '0'}
-                                        />
-                                        {set.goalWeight !== undefined && set.goalWeight > 0 && (
-                                            <div className="text-[10px] text-center text-muted mt-0.5">goal: {set.goalWeight}</div>
-                                        )}
+                                    <div className={`${set.completed ? 'opacity-60' : ''}`}>
+                                        <div className="border border-gray-700 rounded-xl overflow-hidden focus-within:border-primary transition-colors bg-bg flex flex-col items-center justify-center py-1.5 focus-within:ring-2 ring-primary/20">
+                                            <input
+                                                type="number"
+                                                className="w-full text-center bg-transparent outline-none border-none p-0 text-lg font-bold"
+                                                value={set.weight || ''}
+                                                onChange={e => updateSet(exerciseIndex, setIndex, 'weight', Number(e.target.value))}
+                                                placeholder={set.goalWeight ? String(set.goalWeight) : '0'}
+                                            />
+                                            {set.goalWeight !== undefined && set.goalWeight > 0 && (
+                                                <div className="text-[10px] text-center text-muted mt-1 font-medium">goal: {set.goalWeight}</div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* Reps */}
-                                    <div className="col-span-3">
-                                        <input
-                                            type="number"
-                                            className="w-full text-center px-1"
-                                            value={set.reps || ''}
-                                            onChange={e => updateSet(exerciseIndex, setIndex, 'reps', Number(e.target.value))}
-                                            placeholder={set.goalReps ? String(set.goalReps) : '0'}
-                                        />
-                                        {set.goalReps !== undefined && set.goalReps > 0 && (
-                                            <div className="text-[10px] text-center text-muted mt-0.5">goal: {set.goalReps}</div>
-                                        )}
+                                    <div className={`${set.completed ? 'opacity-60' : ''}`}>
+                                        <div className="border border-gray-700 rounded-xl overflow-hidden focus-within:border-primary transition-colors bg-bg flex flex-col items-center justify-center py-1.5 focus-within:ring-2 ring-primary/20">
+                                            <input
+                                                type="number"
+                                                className="w-full text-center bg-transparent outline-none border-none p-0 text-lg font-bold"
+                                                value={set.reps || ''}
+                                                onChange={e => updateSet(exerciseIndex, setIndex, 'reps', Number(e.target.value))}
+                                                placeholder={set.goalReps ? String(set.goalReps) : '0'}
+                                            />
+                                            {set.goalReps !== undefined && set.goalReps > 0 && (
+                                                <div className="text-[10px] text-center text-muted mt-1 font-medium">goal: {set.goalReps}</div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* Duration details */}
-                                    <div className="col-span-4 flex items-center justify-center gap-2 text-[11px] font-mono">
+                                    <div className={`flex items-center justify-center gap-2 text-[11px] font-mono ${set.completed ? 'opacity-60' : ''}`}>
                                         {set.setDuration !== undefined && set.setDuration > 0 && (
                                             <span className="px-1.5 py-0.5 rounded bg-primary/20 font-bold" style={{ color: 'var(--color-primary)' }}>
                                                 {formatTime(set.setDuration)}
                                             </span>
                                         )}
-                                        {set.restSeconds !== undefined && set.restSeconds > 0 && (
-                                            <span className="px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-500 font-bold">
-                                                {formatTime(set.restSeconds)}
-                                            </span>
-                                        )}
-                                        {(!set.setDuration && !set.restSeconds) && (
+                                        {(!set.setDuration) && (
                                             <span className="text-muted">—</span>
                                         )}
                                     </div>
 
                                     {/* Delete */}
-                                    <div className="col-span-1 flex justify-center">
+                                    <div className="flex justify-center">
                                         <button
                                             onClick={() => removeSet(exerciseIndex, setIndex)}
                                             className="text-muted hover:text-danger p-1"
@@ -317,7 +340,7 @@ const ActiveSession: React.FC = () => {
                                             <X size={14} />
                                         </button>
                                     </div>
-                                </div>
+                                </React.Fragment>
                             ))}
                         </div>
 

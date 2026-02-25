@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useData } from '../../context/DataContext';
 import ProgressChart from './ProgressChart';
-import { X, ChevronRight } from 'lucide-react';
+import { X, ChevronRight, Trophy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { TrainingSession } from '../../types/api';
 import GlassCard from '../../components/ui/GlassCard';
@@ -15,6 +15,10 @@ const Dashboard: React.FC = () => {
 
     // Calculate percent for progress bar
     const xpPercent = Math.min(100, Math.max(0, (currentXP / nextLevelXP) * 100));
+
+    // Calculate motivation percentile
+    // Use real backend percentile if available, otherwise 0
+    const betterThanPercent = user.xp_percentile || 0;
 
     return (
         <div className="flex flex-col gap-6 pb-32 pt-8 px-2 max-w-2xl mx-auto">
@@ -59,6 +63,26 @@ const Dashboard: React.FC = () => {
                     <div className="h-full bg-gradient-to-r from-primary to-yellow-500 transition-all duration-1000 ease-out" style={{ width: `${xpPercent}%` }}></div>
                 </div>
                 <div className="absolute top-0 right-0 opacity-5 text-[100px] leading-none pointer-events-none">⚡</div>
+            </div>
+
+            {/* Motivation Banner */}
+            <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-2xl p-4 shadow-lg shadow-indigo-500/20 mb-6 relative overflow-hidden group">
+                <div className="absolute -right-4 -top-4 opacity-10 transform group-hover:scale-110 transition-transform duration-700 rotate-12">
+                    <Trophy size={120} />
+                </div>
+                <div className="relative z-10">
+                    <p className="text-white/70 text-[10px] font-bold uppercase tracking-wider mb-1">Performance Insight</p>
+                    <div className="text-white">
+                        <div className="flex flex-wrap items-baseline gap-x-2 mb-1">
+                            <span className="text-lg font-bold">You are better than</span>
+                            <span className="text-3xl font-black text-yellow-300 tracking-tight">{betterThanPercent}%</span>
+                            <span className="text-lg font-bold">of all users</span>
+                        </div>
+                        <p className="text-white/80 text-xs font-medium max-w-[80%]">
+                            Your dedication is paying off! Keep training to reach the top tier.
+                        </p>
+                    </div>
+                </div>
             </div>
 
             <section>
@@ -112,7 +136,13 @@ const Dashboard: React.FC = () => {
                         <div className="p-5 border-b border-border flex justify-between items-center bg-surface sticky top-0 z-10">
                             <div>
                                 <h2 className="text-xl font-bold text-text">Workout Details</h2>
-                                <p className="text-xs text-muted font-medium mt-1 uppercase tracking-wide">{new Date(selectedSession.date).toLocaleString()}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <p className="text-xs text-muted font-medium uppercase tracking-wide">{new Date(selectedSession.date).toLocaleString()}</p>
+                                    <span className="text-muted">•</span>
+                                    <p className="text-xs text-primary font-bold uppercase tracking-wide">
+                                        ⏱️ {Math.floor(selectedSession.duration_seconds / 60)}m {selectedSession.duration_seconds % 60}s
+                                    </p>
+                                </div>
                             </div>
                             <button onClick={() => setSelectedSession(null)} className="p-2 bg-surface-highlight rounded-full hover:bg-border transition-colors text-text">
                                 <X size={20} />
@@ -127,22 +157,35 @@ const Dashboard: React.FC = () => {
                                         {/* Use exercise name directly from nested object */}
                                         {ex.exercise.name}
                                     </h3>
-                                    <div className="flex flex-col gap-3">
+                                    <div className="flex flex-col gap-0">
                                         {ex.sets.map((set, j) => (
-                                            <div key={j} className="flex justify-between items-center text-sm border-b border-border last:border-none pb-3 last:pb-0">
-                                                <div className="flex items-center gap-4">
-                                                    <span className="w-6 h-6 rounded-full bg-surface-highlight flex items-center justify-center text-xs font-bold text-muted">{j + 1}</span>
-                                                    <span className={`font-medium ${set.completed ? 'text-text' : 'text-muted'}`}>{set.weight} kg <span className="text-muted mx-1">x</span> {set.reps}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    {set.rest_seconds !== undefined && set.rest_seconds > 0 && (
-                                                        <span className="text-[10px] text-orange-500 font-mono bg-orange-500/10 px-2 py-0.5 rounded">
+                                            <React.Fragment key={j}>
+                                                {/* Rest time before this set (if applicable and strictly > 0) */}
+                                                {set.rest_seconds !== undefined && set.rest_seconds > 0 && (
+                                                    <div className="flex justify-center -my-2 relative z-10">
+                                                        <span className="bg-surface px-2 text-[10px] font-bold text-orange-500 border border-orange-500/30 rounded-full py-0.5 flex items-center gap-1 shadow-sm">
+                                                            <span>🛑</span>
                                                             Rest: {Math.floor(set.rest_seconds / 60)}:{String(set.rest_seconds % 60).padStart(2, '0')}
                                                         </span>
-                                                    )}
-                                                    {set.completed && <div className="text-primary text-[10px] font-bold bg-primary/10 px-2 py-1 rounded-full">DONE</div>}
+                                                    </div>
+                                                )}
+
+                                                <div className="flex justify-between items-center text-sm border border-border p-3 rounded-xl bg-surface mb-2 relative z-0">
+                                                    <div className="flex items-center gap-4">
+                                                        <span className="w-6 h-6 rounded-full bg-surface-highlight flex items-center justify-center text-xs font-bold text-muted">{j + 1}</span>
+                                                        <span className={`font-medium ${set.completed ? 'text-text' : 'text-muted'}`}>{set.weight} kg <span className="text-muted mx-1">x</span> {set.reps}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {set.set_duration !== undefined && set.set_duration > 0 && (
+                                                            <span className="text-[10px] text-blue-500 font-mono bg-blue-500/10 px-2 py-0.5 rounded flex items-center gap-1" title="Set Duration">
+                                                                <span>⏱️</span>
+                                                                {Math.floor(set.set_duration / 60)}:{String(set.set_duration % 60).padStart(2, '0')}
+                                                            </span>
+                                                        )}
+                                                        {set.completed && <div className="text-primary text-[10px] font-bold bg-primary/10 px-2 py-1 rounded-full">DONE</div>}
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            </React.Fragment>
                                         ))}
                                     </div>
                                 </div>

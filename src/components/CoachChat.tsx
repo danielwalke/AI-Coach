@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 // @ts-ignore
 import { apiClient } from '../api/client';
 import GlassCard from './ui/GlassCard';
+import { useData } from '../context/DataContext';
+import type { ChatMessage } from '../types/api';
 import {
     Brain,
     Send,
@@ -16,13 +18,6 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-interface ChatMessage {
-    id: string;
-    role: 'user' | 'assistant';
-    content: string;
-    thinking?: string;
-}
-
 interface SessionOption {
     id: number;
     date: string;
@@ -30,11 +25,14 @@ interface SessionOption {
     exercises: string[];
 }
 
-const CoachChat: React.FC = () => {
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
+interface CoachChatProps {
+    className?: string;
+}
+
+const CoachChat: React.FC<CoachChatProps> = ({ className = '' }) => {
+    const { chatMessages: messages, setChatMessages: setMessages, chatModelSource: modelSource, setChatModelSource: setModelSource } = useData();
     const [input, setInput] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
-    const [modelSource, setModelSource] = useState<'web' | 'local'>('web');
     const [sessions, setSessions] = useState<SessionOption[]>([]);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [showSessionPicker, setShowSessionPicker] = useState(false);
@@ -216,7 +214,7 @@ const CoachChat: React.FC = () => {
     };
 
     return (
-        <GlassCard className="p-0 overflow-hidden flex flex-col" style={{ minHeight: '500px' }}>
+        <GlassCard className={`p-0 overflow-hidden flex flex-col ${className}`} style={{ minHeight: '0' }}>
             {/* Header */}
             <div className="p-4 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -260,13 +258,26 @@ const CoachChat: React.FC = () => {
                         )}
                     </div>
                 </div>
-                <button
-                    onClick={() => setShowSessionPicker(!showSessionPicker)}
-                    className="text-xs flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-highlight hover:bg-border text-muted hover:text-text transition-colors border border-border"
-                >
-                    <Plus size={14} />
-                    Context ({selectedIds.length})
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => {
+                            setMessages([]);
+                            localStorage.removeItem('fitness_chat_messages');
+                        }}
+                        className="text-xs flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-highlight hover:bg-red-500/20 text-muted hover:text-red-500 transition-colors border border-border"
+                        title="Clear chat history"
+                    >
+                        <Trash2 size={14} />
+                        Clear
+                    </button>
+                    <button
+                        onClick={() => setShowSessionPicker(!showSessionPicker)}
+                        className="text-xs flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-highlight hover:bg-border text-muted hover:text-text transition-colors border border-border"
+                    >
+                        <Plus size={14} />
+                        Context ({selectedIds.length})
+                    </button>
+                </div>
             </div>
 
             {/* Session Picker (collapsible) */}
@@ -307,14 +318,31 @@ const CoachChat: React.FC = () => {
             }
 
             {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ minHeight: '250px', maxHeight: '500px' }}>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
                 {messages.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full text-center text-muted py-12">
-                        <Brain size={40} className="mb-3 opacity-30" />
-                        <p className="text-sm font-medium">Ask your AI Coach anything</p>
-                        <p className="text-xs mt-1 max-w-xs">
-                            Select workout sessions above for context, then ask for training advice, analysis, or recommendations.
+                    <div className="flex flex-col items-center justify-center h-full text-center text-muted py-12 px-4">
+                        <Brain size={48} className="mb-4 text-primary/20" />
+                        <h3 className="text-lg font-semibold text-text mb-2">AI Health Coach</h3>
+                        <p className="text-sm max-w-sm mb-8">
+                            I can analyze your workouts, suggest improvements, and help you reach your fitness goals.
                         </p>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
+                            {[
+                                "Create a 30-minute HIIT workout",
+                                "How can I improve my running endurance?",
+                                "Analyze my last week's training load",
+                                "Suggest a recovery routine for today"
+                            ].map((suggestion, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => setInput(suggestion)}
+                                    className="text-xs text-left p-3 rounded-xl bg-surface-highlight hover:bg-surface border border-transparent hover:border-primary/30 transition-all text-text hover:text-primary"
+                                >
+                                    {suggestion}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 )}
                 {messages.map(msg => (
@@ -407,6 +435,7 @@ const CoachChat: React.FC = () => {
                         onClick={handleSend}
                         disabled={isStreaming || !input.trim()}
                         className="p-2.5 rounded-xl bg-primary text-white hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Send message"
                     >
                         {isStreaming ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                     </button>
