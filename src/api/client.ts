@@ -9,10 +9,15 @@ export const apiClient = {
             ...options.headers,
         };
 
-        const response = await fetch(`${BASE_URL}${endpoint}`, {
-            ...options,
-            headers,
-        });
+        let response;
+        try {
+            response = await fetch(`${BASE_URL}${endpoint}`, {
+                ...options,
+                headers,
+            });
+        } catch (error) {
+            throw new Error(`NetworkError: ${error instanceof Error ? error.message : String(error)}`);
+        }
 
         if (!response.ok) {
             // Only redirect on 401 if it's NOT a login request
@@ -20,6 +25,9 @@ export const apiClient = {
                 // Determine if we should redirect to login or just throw
                 localStorage.removeItem('fitness_auth_token');
                 window.location.href = '/login';
+            }
+            if (response.status >= 500) {
+                throw new Error(`ServerError: ${response.status} ${response.statusText}`);
             }
             const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
             throw new Error(error.detail || `Request failed: ${response.statusText}`);

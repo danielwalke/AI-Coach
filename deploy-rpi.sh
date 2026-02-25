@@ -86,49 +86,53 @@ echo ""
 echo "  Frontend: http://localhost:9060"
 echo "  Backend:  http://localhost:9061"
 
-# --- Ngrok tunnel ---
+# --- Cloudflare Tunnel (cloudflared) ---
 echo ""
-echo "[5/5] Setting up ngrok tunnel..."
-echo "[5/5] Setting up ngrok tunnel..." >&3
+echo "[5/5] Setting up Cloudflare tunnel (cloudflared)..."
+echo "[5/5] Setting up Cloudflare tunnel..." >&3
 
-if ! command -v ngrok > /dev/null 2>&1; then
-    echo "WARNING: ngrok is not installed."
-    echo "Install with:"
-    echo "  curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok-v3-stable-linux-arm64.tgz | sudo tar xzf - -C /usr/local/bin"
-    echo "  ngrok config add-authtoken YOUR_TOKEN"
-    echo ""
-    echo "After installing, run: ngrok http 9060"
-    echo ""
-    echo "=== Deployment complete (without ngrok) ==="
-    echo "Deployment complete (without ngrok)" >&3
-else
-    # Kill any existing ngrok process
-    pkill ngrok || true
-    
-    echo "Starting ngrok tunnel on port 9060 in background..."
-    echo "Starting ngrok tunnel on port 9060 in background..." >&3
-    nohup ngrok http 9060 > /dev/null 2>&1 &
-    echo "Waiting for ngrok to initialize..."
-    echo "Waiting for ngrok to initialize..." >&3
-    
-    # Retry loop to fetch the public URL
-    NGROK_URL=""
-    for i in {1..10}; do
-        sleep 3
-        NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | grep -o '"public_url":"[^"]*"' | cut -d'"' -f4 | head -n 1 || true)
-        if [ -n "$NGROK_URL" ]; then
-            break
-        fi
-        echo "Still waiting ($i/10)..." >&3
-    done
-    
-    if [ -n "$NGROK_URL" ]; then
-        echo "Ngrok tunnel established successfully."
-        echo "Ngrok tunnel established successfully." >&3
-        echo "Backend URL: $NGROK_URL"
-        echo "$NGROK_URL" >&3
-    else
-        echo "Failed to get ngrok URL. You may need to check the deploy.log for details."
-        echo "Failed to get ngrok URL." >&3
+if ! command -v cloudflared > /dev/null 2>&1; then
+    echo "Installing cloudflared..."
+    curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64.deb
+    sudo dpkg -i cloudflared.deb
+    rm cloudflared.deb
+fi
+
+# Kill any existing cloudflared process
+pkill cloudflared || true
+
+echo "Starting Cloudflare Quick Tunnel on port 9060 in background..."
+echo "Starting Cloudflare Quick Tunnel on port 9060 in background..." >&3
+
+# cloudflared Quick Tunnels log everything to standard error
+nohup cloudflared tunnel --url http://localhost:9060 > cloudflared.log 2>&1 &
+
+echo "Waiting for Cloudflare tunnel to initialize..."
+echo "Waiting for Cloudflare tunnel to initialize..." >&3
+
+# Retry loop to fetch the public URL from the logs
+CLOUDFLARE_URL=""
+for i in {1..15}; do
+    sleep 2
+    # The quick tunnel URL always ends in trycloudflare.com
+    CLOUDFLARE_URL=$(grep -o 'https://[-a-zA-Z0-9]*\.trycloudflare\.com' cloudflared.log | head -n 1)
+    if [ -n "$CLOUDFLARE_URL" ]; then
+        break
     fi
+    echo "Still waiting ($i/15)..." >&3
+done
+
+if [ -n "$CLOUDFLARE_URL" ]; then
+    echo "Cloudflare tunnel established successfully."
+    echo "Cloudflare tunnel established successfully." >&3
+    echo "Backend URL: $CLOUDFLARE_URL"
+    echo "Your AI Coach is publicly accessible at:" >&3
+    echo "$CLOUDFLARE_URL" >&3
+    
+    # Save the URL for reference
+    echo "$CLOUDFLARE_URL" > current_tunnel_url.txt
+else
+    echo "Failed to get Cloudflare URL. You may need to check cloudflared.log for details."
+    echo "Failed to get Cloudflare URL. Check cloudflared.log on the device." >&3
+    cat cloudflared.log | tail -n 10 >&3
 fi

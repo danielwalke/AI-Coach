@@ -14,6 +14,7 @@ interface DataContextType {
     logout: () => void;
 
     // CRUD
+    unsyncedSessions: CreateTrainingSession[];
     addExercise: (name: string, category: string) => Promise<void>;
     addSession: (session: CreateTrainingSession) => Promise<void>;
     deleteSession: (id: number) => Promise<void>;
@@ -62,7 +63,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [exercises, setExercises] = useState<Exercise[]>([]);
     const [sessions, setSessions] = useState<TrainingSession[]>([]);
     const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
+    const [unsyncedSessions, setUnsyncedSessions] = useState<CreateTrainingSession[]>(() => {
+        try {
+            const saved = localStorage.getItem('fitness_unsynced_sessions');
+            return saved ? JSON.parse(saved) : [];
+        } catch { return []; }
+    });
     const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        localStorage.setItem('fitness_unsynced_sessions', JSON.stringify(unsyncedSessions));
+    }, [unsyncedSessions]);
 
     const loadData = useCallback(async (showLoading = true) => {
         const token = localStorage.getItem('fitness_auth_token');
@@ -133,9 +144,54 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const addSession = async (session: CreateTrainingSession) => {
-        await apiClient.post('/sessions/', session);
-        loadData(false);
+        try {
+            await apiClient.post('/sessions/', session);
+            loadData(false);
+        } catch (error: any) {
+            const isOffline = error.message?.includes('NetworkError') || error.message?.includes('ServerError: 502');
+            if (isOffline) {
+                console.warn("Offline or Server Error detected. Saving session offline.");
+                setUnsyncedSessions(prev => [...prev, session]);
+            } else {
+                throw error;
+            }
+        }
     };
+
+    const syncWorkouts = useCallback(async () => {
+        if (unsyncedSessions.length === 0) return;
+
+        const remaining: CreateTrainingSession[] = [];
+        let hasChanges = false;
+
+        for (const session of unsyncedSessions) {
+            try {
+                await apiClient.post('/sessions/', session);
+                hasChanges = true;
+            } catch (error: any) {
+                const isOffline = error.message?.includes('NetworkError') || error.message?.includes('ServerError: 502');
+                if (isOffline) {
+                    remaining.push(session);
+                } else {
+                    console.error("Failed to sync session, discarding:", error, session);
+                    hasChanges = true;
+                }
+            }
+        }
+
+        if (hasChanges) {
+            setUnsyncedSessions(remaining);
+            if (remaining.length < unsyncedSessions.length) {
+                loadData(false);
+            }
+        }
+    }, [unsyncedSessions, loadData]);
+
+    useEffect(() => {
+        if (unsyncedSessions.length > 0) {
+            syncWorkouts();
+        }
+    }, [syncWorkouts, unsyncedSessions.length]);
 
     const deleteSession = async (id: number) => {
         await apiClient.delete(`/sessions/${id}`);
@@ -323,6 +379,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 login,
                 register,
                 logout,
+                unsyncedSessions,
                 addExercise,
                 addSession,
                 deleteSession,
