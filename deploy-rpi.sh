@@ -6,6 +6,12 @@
 # ============================================================
 set -e
 
+# Save original stdout to fd 3
+exec 3>&1
+# Redirect all output and errors to deploy.log
+LOG_FILE="deploy.log"
+exec > "$LOG_FILE" 2>&1
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
@@ -32,10 +38,7 @@ fi
 if ! command -v ollama &> /dev/null; then
     echo "WARNING: Ollama is not installed. The AI Coach chat will not work."
     echo "Install with: curl -fsSL https://ollama.com/install.sh | sh"
-    echo ""
-    read -p "Continue without Ollama? (y/n): " -n 1 -r
-    echo ""
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then exit 1; fi
+    echo "Continuing without Ollama..."
 else
     echo "  Ollama found."
     # Ensure Ollama is running
@@ -89,9 +92,25 @@ if ! command -v ngrok &> /dev/null; then
     echo "After installing, run: ngrok http 9060"
     echo ""
     echo "=== Deployment complete (without ngrok) ==="
+    echo "Deployment complete (without ngrok)" >&3
 else
-    echo "Starting ngrok tunnel on port 9060..."
-    echo "Press Ctrl+C to stop ngrok (containers will keep running)"
-    echo ""
-    ngrok http 9060
+    # Kill any existing ngrok process
+    pkill ngrok || true
+    
+    echo "Starting ngrok tunnel on port 9060 in background..."
+    ngrok http 9060 > /dev/null 2>&1 &
+    
+    # Wait for ngrok to initialize
+    sleep 5
+    
+    # Fetch the public URL from ngrok's local API
+    NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | grep -o '"public_url":"[^"]*"' | cut -d'"' -f4 | head -n 1)
+    
+    if [ -n "$NGROK_URL" ]; then
+        echo "Ngrok tunnel established successfully."
+        echo "$NGROK_URL" >&3
+    else
+        echo "Failed to get ngrok URL. You may need to check the deploy.log for details."
+        echo "Failed to get ngrok URL." >&3
+    fi
 fi
