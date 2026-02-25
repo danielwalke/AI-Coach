@@ -11,7 +11,7 @@ from backend.models import User, TokenData
 # Secret key for signing JWT tokens (should be in env vars in production)
 SECRET_KEY = "supersecretkey" # TODO: Change this in production
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 10080  # 7 days
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")

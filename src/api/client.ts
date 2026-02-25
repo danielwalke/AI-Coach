@@ -59,15 +59,24 @@ export const apiClient = {
     }
 };
 
-// Start a heartbeat to keep ngrok tunnels alive during long workouts
-// Pings the backend every 5 minutes
-setInterval(() => {
-    // We do a raw fetch to avoid throwing errors and triggering redirect logic
-    fetch(`${BASE_URL}/exercises/`, {
-        headers: {
-            'Authorization': `Bearer ${localStorage.getItem('fitness_auth_token') || ''}`
+// Refresh the JWT token every 25 minutes to keep the session alive during long workouts
+setInterval(async () => {
+    const token = localStorage.getItem('fitness_auth_token');
+    if (!token) return;
+
+    try {
+        const response = await fetch(`${BASE_URL}/auth/refresh`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+        if (response.ok) {
+            const data = await response.json();
+            localStorage.setItem('fitness_auth_token', data.access_token);
         }
-    }).catch(() => {
-        // Ignore network errors in the heartbeat
-    });
-}, 5 * 60 * 1000);
+    } catch {
+        // Silently ignore — user will be prompted to log in on next interaction if needed
+    }
+}, 25 * 60 * 1000);
