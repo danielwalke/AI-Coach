@@ -112,7 +112,7 @@ echo "Waiting for Cloudflare tunnel to initialize..." >&3
 
 # Retry loop to fetch the public URL from the logs
 CLOUDFLARE_URL=""
-for i in {1..15}; do
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
     sleep 2
     # The quick tunnel URL always ends in trycloudflare.com
     CLOUDFLARE_URL=$(grep -o 'https://[-a-zA-Z0-9]*\.trycloudflare\.com' cloudflared.log | head -n 1)
