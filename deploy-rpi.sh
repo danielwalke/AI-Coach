@@ -17,10 +17,12 @@ LOG_FILE="deploy.log"
 exec > "$LOG_FILE" 2>&1
 
 echo "=== AI Coach - Raspberry Pi ARM Deployment ==="
+echo "=== AI Coach - Raspberry Pi ARM Deployment ===" >&3
 echo ""
 
 # --- Prerequisites Check ---
 echo "[1/5] Checking prerequisites..."
+echo "[1/5] Checking prerequisites..." >&3
 
 if ! docker --version > /dev/null 2>&1; then
     echo "ERROR: Docker is not installed or not in PATH."
@@ -63,17 +65,21 @@ export OLLAMA_MODEL=qwen3:1.7b
 # --- Stop existing containers ---
 echo ""
 echo "[2/5] Stopping existing containers (if any)..."
+echo "[2/5] Stopping existing containers (if any)..." >&3
 docker compose down > /dev/null 2>&1 || true
 
 # --- Build from scratch (ARM native) ---
 echo ""
 echo "[3/5] Building Docker images from scratch for ARM..."
-echo "  This may take several minutes on Raspberry Pi."
+echo "[3/5] Building Docker images from scratch for ARM..." >&3
+echo "  This may take several minutes on Raspberry Pi. Check deploy.log for details."
+echo "  This may take several minutes on Raspberry Pi. Check deploy.log for details." >&3
 docker compose build --no-cache
 
 # --- Start services ---
 echo ""
 echo "[4/5] Starting services..."
+echo "[4/5] Starting services..." >&3
 docker compose up -d
 
 echo ""
@@ -83,6 +89,7 @@ echo "  Backend:  http://localhost:9061"
 # --- Ngrok tunnel ---
 echo ""
 echo "[5/5] Setting up ngrok tunnel..."
+echo "[5/5] Setting up ngrok tunnel..." >&3
 
 if ! command -v ngrok > /dev/null 2>&1; then
     echo "WARNING: ngrok is not installed."
