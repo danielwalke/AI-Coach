@@ -86,53 +86,56 @@ echo ""
 echo "  Frontend: http://localhost:9060"
 echo "  Backend:  http://localhost:9061"
 
-# --- Ngrok tunnel ---
+# --- Cloudflare Tunnel ---
 echo ""
-echo "[5/5] Setting up ngrok tunnel..."
-echo "[5/5] Setting up ngrok tunnel..." >&3
+echo "[5/5] Setting up Cloudflare tunnel..."
+echo "[5/5] Setting up Cloudflare tunnel..." >&3
 
-if ! command -v ngrok > /dev/null 2>&1; then
-    echo "WARNING: ngrok is not installed."
+if ! command -v cloudflared > /dev/null 2>&1; then
+    echo "WARNING: cloudflared is not installed."
     echo "Install with:"
-    echo "  curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok-v3-stable-linux-arm64.tgz | sudo tar xzf - -C /usr/local/bin"
-    echo "  ngrok config add-authtoken YOUR_TOKEN"
+    echo "  sudo curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64 -o /usr/local/bin/cloudflared"
+    echo "  sudo chmod +x /usr/local/bin/cloudflared"
     echo ""
-    echo "After installing, run: ngrok http 9060"
+    echo "After installing, re-run this script."
     echo ""
-    echo "=== Deployment complete (without ngrok) ==="
-    echo "Deployment complete (without ngrok)" >&3
+    echo "=== Deployment complete (without tunnel) ==="
+    echo "Deployment complete (without tunnel)" >&3
 else
-    # Kill any existing ngrok process
-    pkill ngrok || true
-    
-    echo "Starting ngrok tunnel on port 9060 in background..."
-    echo "Starting ngrok tunnel on port 9060 in background..." >&3
-    nohup ngrok http 9060 > /dev/null 2>&1 &
-    echo "Waiting for ngrok to initialize..."
-    echo "Waiting for ngrok to initialize..." >&3
-    
-    # Retry loop to fetch the public URL
-    NGROK_URL=""
-    for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+    # Kill any existing cloudflared process
+    pkill cloudflared || true
+    sleep 1
+
+    CLOUDFLARED_LOG="$SCRIPT_DIR/cloudflared.log"
+
+    echo "Starting Cloudflare tunnel on port 9060 in background..."
+    echo "Starting Cloudflare tunnel on port 9060 in background..." >&3
+    nohup cloudflared tunnel --url http://localhost:9060 > "$CLOUDFLARED_LOG" 2>&1 &
+    echo "Waiting for Cloudflare tunnel to initialize..."
+    echo "Waiting for Cloudflare tunnel to initialize..." >&3
+
+    # Retry loop to parse the trycloudflare.com URL from the log
+    TUNNEL_URL=""
+    for i in $(seq 1 20); do
         sleep 3
-        NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | grep -o '"public_url":"[^"]*"' | cut -d'"' -f4 | head -n 1 || true)
-        if [ -n "$NGROK_URL" ]; then
+        TUNNEL_URL=$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' "$CLOUDFLARED_LOG" 2>/dev/null | head -n 1 || true)
+        if [ -n "$TUNNEL_URL" ]; then
             break
         fi
-        echo "Still waiting ($i/15)..." >&3
+        echo "Still waiting ($i/20)..." >&3
     done
-    
-    if [ -n "$NGROK_URL" ]; then
-        echo "Ngrok tunnel established successfully."
-        echo "Ngrok tunnel established successfully." >&3
-        echo "Backend URL: $NGROK_URL"
+
+    if [ -n "$TUNNEL_URL" ]; then
+        echo "Cloudflare tunnel established successfully."
+        echo "Cloudflare tunnel established successfully." >&3
+        echo "Tunnel URL: $TUNNEL_URL"
         echo "Your AI Coach is publicly accessible at:" >&3
-        echo "$NGROK_URL" >&3
-        
+        echo "$TUNNEL_URL" >&3
+
         # Save the URL for reference
-        echo "$NGROK_URL" > current_tunnel_url.txt
+        echo "$TUNNEL_URL" > current_tunnel_url.txt
     else
-        echo "Failed to get ngrok URL. You may need to check the deploy.log for details."
-        echo "Failed to get ngrok URL." >&3
+        echo "Failed to get tunnel URL. Check $CLOUDFLARED_LOG for details."
+        echo "Failed to get tunnel URL. Check cloudflared.log" >&3
     fi
 fi

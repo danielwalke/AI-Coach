@@ -76,20 +76,21 @@ Write-Host ""
 Write-Host "  Frontend: http://localhost:9060" -ForegroundColor Green
 Write-Host "  Backend:  http://localhost:9061" -ForegroundColor Green
 
-# --- Ngrok ---
+# --- Cloudflare Tunnel ---
 Write-Host ""
-Write-Host "[5/5] Setting up ngrok tunnel..." -ForegroundColor Yellow
+Write-Host "[5/5] Setting up Cloudflare tunnel..." -ForegroundColor Yellow
 
-$ngrokPath = Get-Command ngrok -ErrorAction SilentlyContinue
-if (-not $ngrokPath) {
-    Write-Host "  WARNING: ngrok is not installed." -ForegroundColor Yellow
-    Write-Host "  Install from: https://ngrok.com/download" -ForegroundColor Yellow
-    Write-Host "  After installing, run: ngrok http 9060" -ForegroundColor Yellow
+$cloudflaredPath = Get-Command cloudflared -ErrorAction SilentlyContinue
+if (-not $cloudflaredPath) {
+    Write-Host "  WARNING: cloudflared is not installed." -ForegroundColor Yellow
+    Write-Host "  Install with: winget install --id Cloudflare.cloudflared" -ForegroundColor Yellow
+    Write-Host "  Or download from: https://github.com/cloudflare/cloudflared/releases/latest" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "=== Deployment complete (without ngrok) ===" -ForegroundColor Cyan
+    Write-Host "=== Deployment complete (without tunnel) ===" -ForegroundColor Cyan
 } else {
-    Write-Host "  Starting ngrok tunnel on port 9060..." -ForegroundColor Green
-    Write-Host "  Press Ctrl+C to stop ngrok (containers will keep running)" -ForegroundColor Gray
+    Write-Host "  Starting Cloudflare tunnel on port 9060..." -ForegroundColor Green
+    Write-Host "  A trycloudflare.com URL will appear below." -ForegroundColor Gray
+    Write-Host "  Press Ctrl+C to stop the tunnel (containers will keep running)" -ForegroundColor Gray
     Write-Host ""
-    ngrok http 9060
+    cloudflared tunnel --url http://localhost:9060
 }
